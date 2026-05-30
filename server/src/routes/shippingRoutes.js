@@ -10,8 +10,16 @@ router.use(authMiddleware.protect);
 // Client-facing endpoint: Calculate shipping rates
 router.post("/calculate-rates", shippingController.calculateRates);
 
-// Admin-only endpoints: Shiprocket logistics
+// Admin-only endpoints: Shiprocket logistics & Shipping Ranges
 router.use(authMiddleware.restrictTo("admin"));
+
+router.route("/ranges")
+  .get(shippingController.getShippingRanges)
+  .post(shippingController.createShippingRange);
+
+router.route("/ranges/:id")
+  .patch(shippingController.updateShippingRange)
+  .delete(shippingController.deleteShippingRange);
 
 router.post("/push-order", shippingController.pushOrderToShiprocket);
 router.post("/assign-awb", shippingController.assignAwb);

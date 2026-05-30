@@ -13,10 +13,19 @@ const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",") 
   : ["http://localhost:5173", "http://localhost:5174"];
 
+// Dynamically include CLIENT_URL and ADMIN_URL if they aren't already included
+if (process.env.CLIENT_URL && !allowedOrigins.includes(process.env.CLIENT_URL)) {
+  allowedOrigins.push(process.env.CLIENT_URL);
+}
+if (process.env.ADMIN_URL && !allowedOrigins.includes(process.env.ADMIN_URL)) {
+  allowedOrigins.push(process.env.ADMIN_URL);
+}
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
+      console.error(`❌ CORS blocked access from origin: ${origin}`);
       const msg = "The CORS policy for this site does not allow access from the specified Origin.";
       return callback(new Error(msg), false);
     }

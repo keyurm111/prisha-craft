@@ -1,9 +1,10 @@
 const Order = require("../models/Order");
 const { Product } = require("../models/Product");
 const shiprocket = require("../utils/shiprocket");
+const ShippingRange = require("../models/ShippingRange");
 
 /**
- * Calculate dynamic shipping rates for checkout
+ * Calculate custom range-based shipping rates for checkout
  */
 exports.calculateRates = async (req, res) => {
   try {
@@ -40,22 +41,36 @@ exports.calculateRates = async (req, res) => {
     if (maxWidth <= 0) maxWidth = 10;
     if (totalHeight <= 0) totalHeight = 10;
 
-    // 2) Query Shiprocket Serviceability
-    // Note: We use "110001" (Delhi) as default warehouse pincode or fallback if not configured
-    const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE || "110001";
-    const codFlag = cod ? 1 : 0;
+    // Convert total weight (in kg) to grams for matching the admin ranges
+    const totalWeightGrams = totalWeight * 1000;
 
-    const rates = await shiprocket.checkServiceability(
-      pickupPostcode,
-      deliveryPostcode,
-      totalWeight,
-      codFlag
-    );
+    // 2) Find matching shipping range rule
+    const ranges = await ShippingRange.find().sort({ minWeight: 1 });
+    let matchedCost = 0; // default to free shipping
+
+    if (ranges.length > 0) {
+      const matchedRange = ranges.find(
+        r => totalWeightGrams >= r.minWeight && totalWeightGrams <= r.maxWeight
+      );
+      if (matchedRange) {
+        matchedCost = matchedRange.cost;
+      } else {
+        // Fallback: If no range directly matches, use the highest range cost
+        const highestRange = ranges[ranges.length - 1];
+        matchedCost = highestRange.cost;
+      }
+    }
 
     res.status(200).json({
       status: "success",
       data: {
-        rates,
+        rates: [
+          {
+            rate: matchedCost,
+            courier_name: "Standard Shipping",
+            etd: "3-7 Days"
+          }
+        ],
         packageMetrics: {
           weight: totalWeight,
           length: maxLength,
@@ -63,6 +78,103 @@ exports.calculateRates = async (req, res) => {
           height: totalHeight
         }
       }
+    });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
+/**
+ * Get all shipping weight ranges (Admin)
+ */
+exports.getShippingRanges = async (req, res) => {
+  try {
+    const ranges = await ShippingRange.find().sort({ minWeight: 1 });
+    res.status(200).json({
+      status: "success",
+      data: {
+        ranges
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
+/**
+ * Create a new shipping weight range (Admin)
+ */
+exports.createShippingRange = async (req, res) => {
+  try {
+    const { minWeight, maxWeight, cost } = req.body;
+
+    if (Number(minWeight) >= Number(maxWeight)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Minimum weight must be less than maximum weight"
+      });
+    }
+
+    const newRange = await ShippingRange.create({ minWeight, maxWeight, cost });
+    res.status(201).json({
+      status: "success",
+      data: {
+        range: newRange
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
+/**
+ * Update an existing shipping weight range (Admin)
+ */
+exports.updateShippingRange = async (req, res) => {
+  try {
+    const { minWeight, maxWeight, cost } = req.body;
+
+    if (minWeight !== undefined && maxWeight !== undefined && Number(minWeight) >= Number(maxWeight)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Minimum weight must be less than maximum weight"
+      });
+    }
+
+    const range = await ShippingRange.findByIdAndUpdate(
+      req.params.id,
+      { minWeight, maxWeight, cost },
+      { new: true, runValidators: true }
+    );
+
+    if (!range) {
+      return res.status(404).json({ status: "fail", message: "Shipping range not found" });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        range
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
+/**
+ * Delete a shipping weight range (Admin)
+ */
+exports.deleteShippingRange = async (req, res) => {
+  try {
+    const range = await ShippingRange.findByIdAndDelete(req.params.id);
+    if (!range) {
+      return res.status(404).json({ status: "fail", message: "Shipping range not found" });
+    }
+
+    res.status(204).json({
+      status: "success",
+      data: null
     });
   } catch (err) {
     res.status(400).json({ status: "fail", message: err.message });

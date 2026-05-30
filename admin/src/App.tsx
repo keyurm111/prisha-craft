@@ -13,6 +13,7 @@ import Settings from './pages/Settings';
 import Rankings from './pages/Rankings';
 import AdminLogin from './pages/Login';
 import Testimonials from './pages/Testimonials';
+import ShippingCosts from './pages/ShippingCosts';
 import { Toaster } from 'sonner';
 
 // Secure Private Route Guard
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="inquiries" element={<Inquiries />} />
           <Route path="blogs" element={<Blogs />} />
           <Route path="coupons" element={<Coupons />} />
+          <Route path="shipping-costs" element={<ShippingCosts />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

@@ -16,7 +16,8 @@ import {
   Ticket,
   Settings,
   BarChart3,
-  Star
+  Star,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const navItems = [
   { icon: MessageSquare, label: 'Inquiries', path: '/inquiries' },
   { icon: FileText, label: 'Blogs', path: '/blogs' },
   { icon: Ticket, label: 'Coupons', path: '/coupons' },
+  { icon: Truck, label: 'Shipping Costs', path: '/shipping-costs' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
