@@ -40,9 +40,14 @@ app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 // Database Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("✅ Successfully connected to MongoDB"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+const mongoURI = process.env.MONGODB_URI;
+if (!mongoURI) {
+  console.error("❌ MONGODB_URI environment variable is missing! Please configure it in your Vercel Project Settings.");
+} else {
+  mongoose.connect(mongoURI)
+    .then(() => console.log("✅ Successfully connected to MongoDB"))
+    .catch((err) => console.error("❌ MongoDB connection error:", err));
+}
 
 // Routes
 const authRouter = require("./routes/authRoutes");
