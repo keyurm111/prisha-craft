@@ -47,6 +47,15 @@ interface Blog {
   publishedAt: string;
 }
 
+interface Testimonial {
+  _id?: string;
+  name: string;
+  role: string;
+  rating: number;
+  content: string;
+  avatar?: string;
+}
+
 
 const whyChoose = [
   { icon: Shield, title: "Artisan Quality", description: "Every bag is handcrafted by experienced masters" },
@@ -55,21 +64,113 @@ const whyChoose = [
   { icon: Star, title: "Craftsmanship Focus", description: "Using premium materials for lasting durability" },
 ];
 
-const testimonials = [
-  { quote: "The craftsmanship of Prisha Crafts bags is exceptional. The leather quality and stitching are truly world-class.", author: "Aditya Sharma", role: "Fashion Stylist" },
-  { quote: "As a boutique owner, finding a manufacturer with this level of attention to detail was a game-changer for our brand.", author: "Priya Mehta", role: "Boutique Owner" },
-  { quote: "I've used their handcrafted totes for years. They aged beautifully and are still my most durable accessories.", author: "Vikram Goel", role: "Long-time Customer" },
-  { quote: "Prisha Crafts handled our bulk order with incredible efficiency. The samples and final products were identical and perfect.", author: "Sanya Kapoor", role: "Retail Buyer" },
-  { quote: "A masterclass in artisanal manufacturing. They understand the balance between modern design and traditional techniques.", author: "Rahul Verma", role: "Accessories Designer" },
+const fallbackTestimonials: Testimonial[] = [
+  { name: "Aditya Sharma", role: "Fashion Stylist", rating: 5, content: "The craftsmanship of Prisha Crafts bags is exceptional. The leather quality and stitching are truly world-class." },
+  { name: "Priya Mehta", role: "Boutique Owner", rating: 5, content: "As a boutique owner, finding a manufacturer with this level of attention to detail was a game-changer for our brand." },
+  { name: "Vikram Goel", role: "Long-time Customer", rating: 5, content: "I've used their handcrafted totes for years. They aged beautifully and are still my most durable accessories." },
+  { name: "Sanya Kapoor", role: "Retail Buyer", rating: 5, content: "Prisha Crafts handled our bulk order with incredible efficiency. The samples and final products were identical and perfect." },
+  { name: "Rahul Verma", role: "Accessories Designer", rating: 5, content: "A masterclass in artisanal manufacturing. They understand the balance between modern design and traditional techniques." },
 ];
 
+const useDragScroll = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [hasMoved, setHasMoved] = useState(false);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    if (e.button !== 0) return; // Only left click drag
+
+    setIsDragging(true);
+    ref.current.style.scrollSnapType = 'none';
+    ref.current.style.scrollBehavior = 'auto';
+    setStartX(e.pageX - ref.current.offsetLeft);
+    setScrollLeft(ref.current.scrollLeft);
+    setHasMoved(false);
+  };
+
+  const onMouseLeave = () => {
+    if (!isDragging || !ref.current) return;
+    setIsDragging(false);
+    ref.current.style.scrollSnapType = 'x mandatory';
+    ref.current.style.scrollBehavior = 'smooth';
+  };
+
+  const onMouseUp = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    if (isDragging) {
+      setIsDragging(false);
+      ref.current.style.scrollSnapType = 'x mandatory';
+      ref.current.style.scrollBehavior = 'smooth';
+      
+      if (hasMoved) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !ref.current) return;
+    const x = e.pageX - ref.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Drag speed multiplier
+    if (Math.abs(walk) > 5) {
+      setHasMoved(true);
+    }
+    ref.current.scrollLeft = scrollLeft - walk;
+  };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const handleDragStart = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleClickCapture = (e: MouseEvent) => {
+      if (hasMoved) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+
+    el.addEventListener('dragstart', handleDragStart);
+    el.addEventListener('click', handleClickCapture, true);
+
+    return () => {
+      el.removeEventListener('dragstart', handleDragStart);
+      el.removeEventListener('click', handleClickCapture, true);
+    };
+  }, [hasMoved]);
+
+  return {
+    ref,
+    onMouseDown,
+    onMouseLeave,
+    onMouseUp,
+    onMouseMove,
+    isDragging
+  };
+};
+
 function SellingOutFast({ products }: { products: Product[] }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    ref: scrollRef,
+    onMouseDown,
+    onMouseLeave,
+    onMouseUp,
+    onMouseMove,
+    isDragging
+  } = useDragScroll();
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return;
+    scrollRef.current.style.scrollBehavior = 'smooth';
     const cardWidth = scrollRef.current.querySelector("div")?.offsetWidth || 300;
-    scrollRef.current.scrollBy({ left: dir === "left" ? -cardWidth - 32 : cardWidth + 32, behavior: "smooth" });
+    scrollRef.current.scrollBy({ left: dir === "left" ? -cardWidth - 32 : cardWidth + 32 });
   };
 
   if (products.length === 0) return null;
@@ -82,33 +183,42 @@ function SellingOutFast({ products }: { products: Product[] }) {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="flex items-end justify-between mb-14"
+            className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6"
         >
-          <div>
-            <h2 className="text-3xl md:text-4xl font-heading font-bold mb-3">Selling Out Fast</h2>
+          <div className="max-w-xl">
+            <h2 className="text-3xl md:text-4xl font-heading font-bold mb-3 uppercase">Selling Out Fast</h2>
             <p className="text-muted-foreground font-body text-sm sm:text-base">Grab these popular picks before they're gone</p>
           </div>
-          <div className="flex gap-2">
-            <button
-                onClick={() => scroll("left")}
-                className="w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
-                aria-label="Previous"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-                onClick={() => scroll("right")}
-                className="w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
-                aria-label="Next"
-            >
-              <ChevronRight size={20} />
-            </button>
+          <div className="flex items-center gap-6 self-start md:self-auto">
+            <div className="flex gap-2">
+              <button
+                  onClick={() => scroll("left")}
+                  className="w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground hover:text-background transition-colors active:scale-95"
+                  aria-label="Previous"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                  onClick={() => scroll("right")}
+                  className="w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground hover:text-background transition-colors active:scale-95"
+                  aria-label="Next"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+            <Link to="/shop" className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] px-8 py-4 bg-secondary/50 rounded-full hover:bg-black hover:text-white transition-all whitespace-nowrap w-fit">
+               View All Products
+            </Link>
           </div>
         </motion.div>
 
         <div
             ref={scrollRef}
-            className="flex gap-8 overflow-x-auto scrollbar-hide pb-4 snap-x snap-mandatory touch-pan-y no-scrollbar"
+            onMouseDown={onMouseDown}
+            onMouseLeave={onMouseLeave}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            className={`flex gap-8 overflow-x-auto scrollbar-hide pb-4 snap-x snap-mandatory touch-pan-x no-scrollbar ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {products.map((product, i) => (
@@ -125,14 +235,33 @@ function SellingOutFast({ products }: { products: Product[] }) {
   );
 }
 
+
+
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [sliders, setSliders] = useState<Slider[]>([]);
   const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+
+  const {
+    ref: blogScrollRef,
+    onMouseDown: blogMouseDown,
+    onMouseLeave: blogMouseLeave,
+    onMouseUp: blogMouseUp,
+    onMouseMove: blogMouseMove,
+    isDragging: blogDragging
+  } = useDragScroll();
+
+  const scrollBlogs = (dir: "left" | "right") => {
+    if (!blogScrollRef.current) return;
+    blogScrollRef.current.style.scrollBehavior = 'smooth';
+    const cardWidth = blogScrollRef.current.querySelector("article")?.offsetWidth || 300;
+    blogScrollRef.current.scrollBy({ left: dir === "left" ? -cardWidth - 32 : cardWidth + 32 });
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -144,16 +273,18 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cRes, pRes, sRes, bRes] = await Promise.all([
+        const [cRes, pRes, sRes, bRes, tRes] = await Promise.all([
           api.get("/categories"),
           api.get("/products"),
           api.get("/sliders"),
-          api.get("/blogs?status=Published")
+          api.get("/blogs?status=Published"),
+          api.get("/testimonials?featured=true")
         ]);
         setCategories(cRes.data.data.categories);
         setFeaturedProducts(pRes.data.data.products.slice(0, 10)); // Take first 10 for showcasing
         setSliders(sRes.data.data.sliders.filter((s: Slider) => s.isActive));
         setBlogs(bRes.data.data.blogs.slice(0, 4));
+        setTestimonials(tRes.data.data.testimonials || []);
       } catch (error) {
         console.error("Failed to fetch homepage data", error);
       } finally {
@@ -238,10 +369,10 @@ export default function HomePage() {
                 <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/90">Artisan Handcrafted</span>
               </motion.div>
 
-              <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white leading-[1.05] mb-6 md:mb-8 tracking-tighter uppercase">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-heading font-black text-white leading-[1.1] mb-6 md:mb-8 tracking-tight uppercase">
                 {activeSlider.title}
               </h1>
-              <p className="text-base sm:text-lg md:text-xl text-white/80 font-medium mb-8 md:mb-12 max-w-xl italic leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-white/80 font-medium mb-8 md:mb-10 max-w-xl italic leading-relaxed">
                 {activeSlider.subtitle}
               </p>
               
@@ -358,26 +489,34 @@ export default function HomePage() {
 
         <div className="relative flex pause-marquee">
             <div className="flex animate-marquee gap-8 whitespace-nowrap">
-                {[...testimonials, ...testimonials].map((t, i) => (
-                    <div 
-                        key={i} 
-                        className="w-[320px] sm:w-[450px] p-6 sm:p-8 bg-white rounded-3xl sm:rounded-[2.5rem] luxury-shadow border border-border/20 flex flex-col gap-4 whitespace-normal"
-                    >
-                        <div className="flex gap-1 text-primary">
-                            {[1,2,3,4,5].map(s => <Star key={s} size={14} fill="currentColor" />)}
-                        </div>
-                        <p className="text-sm sm:text-[15px] font-medium leading-relaxed italic text-foreground/80">"{t.quote}"</p>
-                        <div className="flex items-center gap-4 mt-2">
-                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-black text-[10px] text-primary">
-                                {t.author.charAt(0)}
+                {(() => {
+                    const list = testimonials.length > 0 ? testimonials : fallbackTestimonials;
+                    const doubledList = [...list, ...list];
+                    return doubledList.map((t, i) => (
+                        <div 
+                            key={i} 
+                            className="w-[320px] sm:w-[450px] p-6 sm:p-8 bg-white rounded-3xl sm:rounded-[2.5rem] luxury-shadow border border-border/20 flex flex-col gap-4 whitespace-normal"
+                        >
+                            <div className="flex gap-1 text-primary">
+                                {[...Array(t.rating || 5)].map((_, s) => <Star key={s} size={14} fill="currentColor" />)}
                             </div>
-                            <div>
-                                <p className="text-xs font-black uppercase tracking-widest">{t.author}</p>
-                                <p className="text-[10px] text-muted-foreground font-bold">{t.role}</p>
+                            <p className="text-sm sm:text-[15px] font-medium leading-relaxed italic text-foreground/80">"{t.content}"</p>
+                            <div className="flex items-center gap-4 mt-2">
+                                {t.avatar ? (
+                                    <img src={t.avatar} alt={t.name} className="w-10 h-10 rounded-full object-cover border border-border" />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-black text-[10px] text-primary">
+                                        {t.name.charAt(0)}
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-widest">{t.name}</p>
+                                    <p className="text-[10px] text-muted-foreground font-bold">{t.role}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ));
+                })()}
             </div>
         </div>
       </section>
@@ -395,12 +534,38 @@ export default function HomePage() {
              <h2 className="text-3xl md:text-5xl font-heading font-black tracking-tighter mb-4 uppercase">The Craft Journal</h2>
              <p className="text-muted-foreground font-medium italic text-sm sm:text-base">Behind the scenes of our artisanal process, bag design trends, and leather care.</p>
           </div>
-          <Link to="/blog" className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] px-8 py-4 bg-secondary/50 rounded-full hover:bg-black hover:text-white transition-all whitespace-nowrap w-fit">
-             View All Blogs
-          </Link>
+          <div className="flex items-center gap-6 self-start md:self-auto">
+            <div className="flex gap-2">
+              <button
+                  onClick={() => scrollBlogs("left")}
+                  className="w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground hover:text-background transition-colors active:scale-95"
+                  aria-label="Previous blog"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                  onClick={() => scrollBlogs("right")}
+                  className="w-10 h-10 rounded-full border border-foreground/20 flex items-center justify-center hover:bg-foreground hover:text-background transition-colors active:scale-95"
+                  aria-label="Next blog"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+            <Link to="/blog" className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] px-8 py-4 bg-secondary/50 rounded-full hover:bg-black hover:text-white transition-all whitespace-nowrap w-fit">
+               View All Blogs
+            </Link>
+          </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div 
+          ref={blogScrollRef}
+          onMouseDown={blogMouseDown}
+          onMouseLeave={blogMouseLeave}
+          onMouseUp={blogMouseUp}
+          onMouseMove={blogMouseMove}
+          className={`flex gap-8 overflow-x-auto scrollbar-hide pb-4 snap-x snap-mandatory touch-pan-x no-scrollbar ${blogDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {blogs.map((blog, i) => (
              <motion.article
                 key={blog._id}
@@ -408,7 +573,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="group relative flex flex-col h-full bg-white rounded-3xl sm:rounded-[2rem] border border-border/10 overflow-hidden hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 cursor-pointer"
+                className="group relative flex flex-col h-full bg-white rounded-3xl sm:rounded-[2rem] border border-border/10 overflow-hidden hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 cursor-pointer min-w-[270px] max-w-[290px] md:min-w-[320px] md:max-w-[340px] snap-start shrink-0"
              >
                 <Link to={`/blog/${blog.slug}`} className="absolute inset-0 z-10" />
                 

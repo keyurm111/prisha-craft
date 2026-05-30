@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Loader2 } from "lucide-react";
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Loader2, Heart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
 import api from "@/services/api";
 import { toast } from "sonner";
 import { Ticket, X, CheckCircle2 } from "lucide-react";
@@ -13,10 +14,23 @@ interface Product {
   price: number;
   mainImage: string;
   category: { name: string };
+  mrp?: number;
+  variants?: Array<{
+    _id: string;
+    id?: string;
+    sku?: string;
+    options: Record<string, string>;
+    price?: number;
+    mrp?: number;
+    stock?: number;
+    image?: string;
+    images?: string[];
+  }>;
 }
 
 export default function CartPage() {
   const { cart, updateQuantity, removeFromCart, cartCount } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [couponCode, setCouponCode] = useState("");
@@ -39,10 +53,32 @@ export default function CartPage() {
 
   const cartItems = cart.map((item) => {
     const product = products.find((p) => p._id === item.id);
-    return product ? {
+    if (!product) return null;
+    
+    let price = product.price;
+    let mrp = product.mrp || product.price;
+    let image = product.mainImage;
+    
+    if (item.selectedVariant && product.variants) {
+      const variant = product.variants.find((v) => {
+        const vId = v._id || v.id;
+        return vId && String(vId) === String(item.selectedVariant.id);
+      });
+      if (variant) {
+        if (variant.price) price = variant.price;
+        if (variant.mrp) mrp = variant.mrp;
+        if (variant.image) image = variant.image;
+      }
+    }
+    
+    return {
       ...product,
+      price,
+      mrp,
+      mainImage: image,
       quantity: item.quantity,
-    } : null;
+      selectedVariant: item.selectedVariant
+    };
   }).filter(Boolean) as any[];
 
   const subtotal = cartItems.reduce(
@@ -151,7 +187,7 @@ export default function CartPage() {
         <div className="lg:col-span-2 space-y-6">
           {cartItems.map((item, index) => (
             <motion.div
-              key={item._id}
+              key={`${item._id}_${item.selectedVariant?.id || "none"}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -165,6 +201,11 @@ export default function CartPage() {
                 <Link to={`/product/${item._id}`} className="hover:text-primary transition-colors">
                   <h3 className="font-body font-bold text-lg mb-1">{item.name}</h3>
                 </Link>
+                {item.selectedVariant && (
+                  <p className="text-xs text-primary font-black uppercase tracking-widest mb-1.5">
+                    Option: {item.selectedVariant.name}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
                   {item.category?.name || "Uncategorized"}
                 </p>
@@ -176,27 +217,43 @@ export default function CartPage() {
               <div className="flex flex-col sm:items-end justify-between gap-4">
                 <div className="flex items-center gap-1 bg-background rounded-lg border border-border p-1">
                   <button
-                    onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                    onClick={() => updateQuantity(item._id, item.quantity - 1, item.selectedVariant?.id)}
                     className="p-1.5 hover:bg-secondary rounded-md transition-colors"
                   >
                     <Minus size={16} />
                   </button>
                   <span className="w-10 text-center font-body font-bold">{item.quantity}</span>
                   <button
-                    onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                    onClick={() => updateQuantity(item._id, item.quantity + 1, item.selectedVariant?.id)}
                     className="p-1.5 hover:bg-secondary rounded-md transition-colors"
                   >
                     <Plus size={16} />
                   </button>
                 </div>
                 
-                <button
-                  onClick={() => removeFromCart(item._id)}
-                  className="flex items-center gap-2 text-sm font-medium text-destructive hover:opacity-80 transition-opacity"
-                >
-                  <Trash2 size={16} />
-                  Remove
-                </button>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => {
+                      if (!isInWishlist(item._id)) {
+                        toggleWishlist(item._id);
+                      }
+                      removeFromCart(item._id, item.selectedVariant?.id);
+                      toast.success("Moved to Wishlist!");
+                    }}
+                    className="flex items-center gap-1.5 text-sm font-medium text-primary hover:opacity-80 transition-opacity"
+                  >
+                    <Heart size={16} />
+                    Move to Wishlist
+                  </button>
+                  <span className="text-muted-foreground/30">|</span>
+                  <button
+                    onClick={() => removeFromCart(item._id, item.selectedVariant?.id)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-destructive hover:opacity-80 transition-opacity"
+                  >
+                    <Trash2 size={16} />
+                    Remove
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}

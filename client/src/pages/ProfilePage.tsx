@@ -35,6 +35,11 @@ interface Order {
     product: any;
     quantity: number;
     price: number;
+    selectedVariant?: {
+      id: string;
+      name: string;
+      options?: Record<string, string>;
+    };
   }>;
 }
 
@@ -50,7 +55,7 @@ export default function ProfilePage() {
 
   // Structured Address State
   const [addressLine1, setAddressLine1] = useState(user?.shippingAddress?.addressLine1 || "");
-  const [addressLine2, setAddressLine2] = useState(user?.shippingAddress?.addressLine2 || "");
+  const [area, setArea] = useState(user?.shippingAddress?.area || "");
   const [city, setCity] = useState(user?.shippingAddress?.city || "");
   const [state, setState] = useState(user?.shippingAddress?.state || "");
   const [postalCode, setPostalCode] = useState(user?.shippingAddress?.postalCode || "");
@@ -67,7 +72,7 @@ export default function ProfilePage() {
       setEmail(user.email || "");
       setPhone(user.phone || "");
       setAddressLine1(user.shippingAddress?.addressLine1 || "");
-      setAddressLine2(user.shippingAddress?.addressLine2 || "");
+      setArea(user.shippingAddress?.area || "");
       setCity(user.shippingAddress?.city || "");
       setState(user.shippingAddress?.state || "");
       setPostalCode(user.shippingAddress?.postalCode || "");
@@ -81,6 +86,45 @@ export default function ProfilePage() {
     }
   }, [activeTab]);
 
+  // Auto-detect address details from Postal Code
+  useEffect(() => {
+    const fetchAddressDetails = async () => {
+      if (/^[1-9][0-9]{5}$/.test(postalCode)) {
+        const toastId = toast.loading("Fetching address details for PIN code...");
+        try {
+          const response = await fetch(`https://api.postalpincode.in/pincode/${postalCode}`);
+          const data = await response.json();
+          
+          if (data && data[0] && data[0].Status === "Success") {
+            const postOffices = data[0].PostOffice;
+            if (postOffices && postOffices.length > 0) {
+              const info = postOffices[0];
+              setArea(info.Name || "");
+              setCity(info.District || info.Block || "");
+              setState(info.State || "");
+              setCountry("India");
+              toast.success("Address details auto-filled!", { id: toastId });
+            } else {
+              toast.error("Invalid PIN code.", { id: toastId });
+            }
+          } else {
+            toast.error("Invalid PIN code or service unavailable.", { id: toastId });
+          }
+        } catch (error) {
+          console.error("Error fetching PIN code details:", error);
+          toast.error("Failed to fetch PIN code details.", { id: toastId });
+        }
+      }
+    };
+
+    fetchAddressDetails();
+  }, [postalCode]);
+
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancellationForm, setShowCancellationForm] = useState(false);
+  const [cancelReasonOption, setCancelReasonOption] = useState("Incorrect shipping address");
+  const [customCancelNote, setCustomCancelNote] = useState("");
+
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
     try {
@@ -93,13 +137,96 @@ export default function ProfilePage() {
     }
   };
 
+  const handleCancelOrder = (orderId: string) => {
+    setCancelReasonOption("Incorrect shipping address");
+    setCustomCancelNote("");
+    setShowCancellationForm(true);
+  };
+
+  const submitCancelOrder = async () => {
+    if (!selectedOrder) return;
+    
+    let reason = cancelReasonOption;
+    if (cancelReasonOption === "Changed my mind / Other") {
+      if (!customCancelNote.trim()) {
+        toast.error("Please enter a custom cancellation reason.");
+        return;
+      }
+      reason = customCancelNote.trim();
+    }
+    
+    setIsCancelling(true);
+    try {
+      const response = await api.post(`/orders/${selectedOrder._id}/cancel`, { cancellationReason: reason });
+      if (response.data.status === "success") {
+        const orderVal = response.data.data.order;
+        if (orderVal.paymentMethod === "Online") {
+          toast.success(
+            `Order cancelled successfully! A full refund of ₹${orderVal.totalAmount.toLocaleString()} has been initiated and will reflect in your account in 5–7 business days (UPI methods are often instant).`,
+            { duration: 8000 }
+          );
+        } else {
+          toast.success("Order cancelled successfully!");
+        }
+        setShowCancellationForm(false);
+        setCustomCancelNote("");
+        await fetchOrders();
+        setSelectedOrder(null);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to cancel order");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const getItemImage = (item: any) => {
+    const product = item.product;
+    if (!product || typeof product !== 'object') {
+      return "https://placehold.co/100";
+    }
+    
+    if (item.selectedVariant?.id && product.variants) {
+      let variant = product.variants.find((v: any) => {
+        const vId = v._id || v.id;
+        return vId && String(vId) === String(item.selectedVariant.id);
+      });
+      
+      // Fallback to match by options if ID match fails (e.g. if variants were regenerated)
+      if (!variant && item.selectedVariant.options) {
+        variant = product.variants.find((v: any) => {
+          const vOpt = v.options;
+          const sOpt = item.selectedVariant.options;
+          if (!vOpt || !sOpt) return false;
+          
+          const vOptObj = vOpt instanceof Map ? Object.fromEntries(vOpt) : vOpt;
+          const sOptObj = sOpt instanceof Map ? Object.fromEntries(sOpt) : sOpt;
+          
+          const sKeys = Object.keys(sOptObj);
+          if (sKeys.length === 0) return false;
+          
+          return sKeys.every(key => {
+            const vVal = vOptObj[key];
+            const sVal = sOptObj[key];
+            return vVal !== undefined && String(vVal).toLowerCase() === String(sVal).toLowerCase();
+          });
+        });
+      }
+      
+      if (variant?.image) {
+        return variant.image;
+      }
+    }
+    return product.mainImage || product.variants?.[0]?.image || "https://placehold.co/100";
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdating(true);
     try {
       const shippingAddress = {
           addressLine1,
-          addressLine2,
+          area,
           city,
           state,
           postalCode,
@@ -253,11 +380,11 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Address Line 2 (Optional)</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Area</label>
                                 <Input 
-                                    value={addressLine2} 
-                                    onChange={(e) => setAddressLine2(e.target.value)}
-                                    placeholder="Apartment, suite, unit, etc."
+                                    value={area} 
+                                    onChange={(e) => setArea(e.target.value)}
+                                    placeholder="Area, Colony, Landmark, etc."
                                     className="h-14 px-6 bg-secondary/30 border-none rounded-2xl font-bold"
                                 />
                             </div>
@@ -432,19 +559,16 @@ export default function ProfilePage() {
                     <div className="space-y-4">
                        {selectedOrder.items?.map((item, idx) => (
                          <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 lg:gap-6 p-4 lg:p-6 bg-secondary/5 rounded-2xl">
-                            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-xl overflow-hidden bg-white border border-border/10 shrink-0 mx-auto sm:mx-0">
-                                {item.product?.mainImage ? (
-                                    <img src={item.product.mainImage} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
-                                        <ShoppingBag size={24} />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 w-full text-center sm:text-left">
-                                <p className="font-bold text-sm lg:text-base uppercase tracking-tight line-clamp-1">{item.product?.name || "Product Item"}</p>
-                                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
-                            </div>
+                             <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-xl overflow-hidden bg-white border border-border/10 shrink-0 mx-auto sm:mx-0">
+                                 <img src={getItemImage(item)} alt="" className="w-full h-full object-cover" />
+                             </div>
+                             <div className="flex-1 w-full text-center sm:text-left">
+                                 <p className="font-bold text-sm lg:text-base uppercase tracking-tight line-clamp-1">{item.product?.name || "Product Item"}</p>
+                                 {item.selectedVariant?.name && (
+                                     <p className="text-[9px] text-primary font-black uppercase tracking-wider mt-0.5">Option: {item.selectedVariant.name}</p>
+                                 )}
+                                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
+                             </div>
                             <div className="w-full sm:w-auto text-center sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-border/10 sm:border-none">
                                 <p className="font-bold text-sm lg:text-lg text-primary">₹{(item.price * item.quantity).toLocaleString()}</p>
                             </div>
@@ -469,11 +593,145 @@ export default function ProfilePage() {
                     )}
                     <div className="flex justify-between items-center pt-2">
                         <span className="text-xs font-black uppercase text-muted-foreground">Payment Status</span>
-                        <span className={`font-black uppercase text-[10px] px-3 py-1 rounded-full ${selectedOrder.paymentStatus === 'Paid' ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50'}`}>
+                        <span className={`font-black uppercase text-[10px] px-3 py-1 rounded-full ${
+                          selectedOrder.paymentStatus === 'Paid' ? 'text-green-600 bg-green-50' : 
+                          selectedOrder.paymentStatus === 'Refunded' ? 'text-blue-600 bg-blue-50' : 
+                          selectedOrder.paymentStatus === 'Refund Pending' ? 'text-amber-600 bg-amber-50 animate-pulse' :
+                          selectedOrder.paymentStatus === 'Refund Initiated' ? 'text-blue-500 bg-blue-50/50' :
+                          selectedOrder.paymentStatus === 'Refund Failed' ? 'text-red-500 bg-red-50' :
+                          selectedOrder.paymentStatus === 'Failed' ? 'text-red-600 bg-red-50' : 
+                          'text-amber-600 bg-amber-50'
+                        }`}>
                             {selectedOrder.paymentStatus}
                         </span>
                     </div>
                 </div>
+
+                {selectedOrder.orderStatus === "Processing" && (
+                  <div className="flex justify-end pt-4">
+                    <button
+                      onClick={() => handleCancelOrder(selectedOrder._id)}
+                      disabled={isCancelling}
+                      className="w-full sm:w-auto px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-md hover:shadow-red-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isCancelling ? (
+                        <>
+                          <Loader2 className="animate-spin" size={14} />
+                          <span>Cancelling...</span>
+                        </>
+                      ) : (
+                        <span>Cancel Order</span>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancellation Reason Modal */}
+      <AnimatePresence>
+        {showCancellationForm && selectedOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/75 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border/40 p-8 space-y-6 text-foreground"
+            >
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-heading font-black tracking-tight uppercase">Cancel Your Order</h3>
+                <p className="text-xs text-muted-foreground">
+                  We are sorry to see you cancel. Please let us know the reason so we can improve our service.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground font-semibold">Choose a reason:</label>
+                {[
+                  "Incorrect shipping address",
+                  "Order placed by mistake",
+                  "Found a better price elsewhere",
+                  "Changed my mind / Other"
+                ].map((reason) => (
+                  <label
+                    key={reason}
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                      cancelReasonOption === reason
+                        ? "border-primary bg-primary/5 text-primary font-bold shadow-sm"
+                        : "border-border/60 hover:bg-secondary/40 text-muted-foreground"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cancellationReason"
+                      value={reason}
+                      checked={cancelReasonOption === reason}
+                      onChange={() => setCancelReasonOption(reason)}
+                      className="accent-primary w-4 h-4 shrink-0"
+                    />
+                    <span className="text-xs">{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              {cancelReasonOption === "Changed my mind / Other" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="space-y-2 overflow-hidden"
+                >
+                  <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground font-semibold">
+                    Custom Reason Details:
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Describe your reason here..."
+                    value={customCancelNote}
+                    onChange={(e) => setCustomCancelNote(e.target.value)}
+                    className="w-full p-4 text-xs rounded-xl border border-border/60 outline-none focus:border-primary transition-all resize-none bg-white"
+                    required
+                  />
+                </motion.div>
+              )}
+
+              {selectedOrder.paymentMethod === "Online" && (
+                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start gap-3">
+                  <span className="text-blue-500 text-lg">💡</span>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-blue-600 tracking-wider font-semibold">Refund Information</p>
+                    <p className="text-[11px] text-blue-700/80 leading-relaxed font-medium">
+                      A full refund of <strong className="text-blue-900 font-bold">₹{selectedOrder.totalAmount.toLocaleString()}</strong> will be automatically credited back to your original payment method.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCancellationForm(false)}
+                  className="flex-1 py-4 hover:bg-secondary/40 border border-border/60 text-foreground font-black text-[10px] tracking-widest uppercase rounded-xl transition-all active:scale-95"
+                >
+                  Go Back
+                </button>
+                <button
+                  type="button"
+                  onClick={submitCancelOrder}
+                  disabled={isCancelling}
+                  className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="animate-spin" size={14} />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Cancel</span>
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>

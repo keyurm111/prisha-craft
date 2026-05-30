@@ -5,6 +5,6 @@ const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
 
 router.patch("/updateMe", authMiddleware.protect, userController.updateMe);
-router.get("/", userController.getAllUsers);
+router.get("/", authMiddleware.protect, authMiddleware.restrictTo("admin"), userController.getAllUsers);
 
 module.exports = router;

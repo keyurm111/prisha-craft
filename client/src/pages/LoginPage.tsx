@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import api from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -113,19 +114,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11 rounded-lg font-bold text-sm gap-3 border-border hover:bg-secondary/20 bg-white text-black transition-all"
-              onClick={() => toast.info("Google Login coming soon!")}
-            >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
-                alt="Google" 
-                className="w-4 h-4"
-              />
-              Google
-            </Button>
+            <GoogleLoginButton
+              text="signin_with"
+              onSuccess={(token, user) => {
+                login(token, user);
+                toast.success(`Welcome back, ${user.name}!`);
+                navigate("/");
+              }}
+            />
           </form>
 
           <p className="mt-8 text-xs text-center text-muted-foreground font-medium">

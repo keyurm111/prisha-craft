@@ -15,7 +15,8 @@ import {
   X,
   Ticket,
   Settings,
-  BarChart3
+  BarChart3,
+  Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ const navItems = [
   { icon: Layers, label: 'Categories', path: '/categories' },
   { icon: BarChart3, label: 'Ranking', path: '/rankings' },
   { icon: ImageIcon, label: 'Sliders', path: '/sliders' },
+  { icon: Star, label: 'Reviews', path: '/testimonials' },
   { icon: Users, label: 'Users', path: '/users' },
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
   { icon: MessageSquare, label: 'Inquiries', path: '/inquiries' },
@@ -45,6 +47,8 @@ export default function DashboardLayout() {
   }, [location.pathname]);
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     navigate('/login');
   };
 

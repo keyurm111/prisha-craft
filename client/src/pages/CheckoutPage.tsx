@@ -33,13 +33,25 @@ interface Product {
   name: string;
   price: number;
   mainImage: string;
+  mrp?: number;
+  variants?: Array<{
+    _id: string;
+    id?: string;
+    sku?: string;
+    options: Record<string, string>;
+    price?: number;
+    mrp?: number;
+    stock?: number;
+    image?: string;
+    images?: string[];
+  }>;
 }
 
 export default function CheckoutPage() {
   const { cart, cartCount, clearCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
   
   const [currentStep, setCurrentStep] = useState<Step>(Step.Shipping);
@@ -70,10 +82,32 @@ export default function CheckoutPage() {
 
   const cartItems = cart.map((item) => {
     const product = products.find((p) => p._id === item.id);
-    return product ? {
+    if (!product) return null;
+    
+    let price = product.price;
+    let mrp = product.mrp || product.price;
+    let image = product.mainImage;
+    
+    if (item.selectedVariant && product.variants) {
+      const variant = product.variants.find((v) => {
+        const vId = v._id || v.id;
+        return vId && String(vId) === String(item.selectedVariant.id);
+      });
+      if (variant) {
+        if (variant.price) price = variant.price;
+        if (variant.mrp) mrp = variant.mrp;
+        if (variant.image) image = variant.image;
+      }
+    }
+    
+    return {
       ...product,
+      price,
+      mrp,
+      mainImage: image,
       quantity: item.quantity,
-    } : null;
+      selectedVariant: item.selectedVariant
+    };
   }).filter(Boolean) as any[];
 
   const subtotal = cartItems.reduce(
@@ -107,7 +141,12 @@ export default function CheckoutPage() {
     localStorage.removeItem("appliedCouponCode");
   };
 
-  const totalAmount = appliedCoupon ? appliedCoupon.finalAmount : subtotal;
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "Online">("COD");
+  const [shippingRates, setShippingRates] = useState<any[]>([]);
+  const [selectedRate, setSelectedRate] = useState<any>(null);
+  const [isFetchingRates, setIsFetchingRates] = useState(false);
+
+  const totalAmount = (appliedCoupon ? appliedCoupon.finalAmount : subtotal) + (selectedRate ? selectedRate.rate : 0);
 
   useEffect(() => {
     const savedCouponCode = localStorage.getItem("appliedCouponCode");
@@ -131,7 +170,7 @@ export default function CheckoutPage() {
   const [shippingAddress, setShippingAddress] = useState({
     fullName: user?.name || "",
     addressLine1: user?.shippingAddress?.addressLine1 || "",
-    addressLine2: user?.shippingAddress?.addressLine2 || "",
+    area: user?.shippingAddress?.area || "",
     city: user?.shippingAddress?.city || "",
     state: user?.shippingAddress?.state || "",
     postalCode: user?.shippingAddress?.postalCode || "",
@@ -143,7 +182,7 @@ export default function CheckoutPage() {
       setShippingAddress({
         fullName: user.name || "",
         addressLine1: user.shippingAddress?.addressLine1 || "",
-        addressLine2: user.shippingAddress?.addressLine2 || "",
+        area: user.shippingAddress?.area || "",
         city: user.shippingAddress?.city || "",
         state: user.shippingAddress?.state || "",
         postalCode: user.shippingAddress?.postalCode || "",
@@ -152,33 +191,228 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "Online">("COD");
+  // Auto-detect address details from Postal Code in checkout page
+  useEffect(() => {
+    const fetchAddressDetails = async () => {
+      const pin = shippingAddress.postalCode;
+      if (/^[1-9][0-9]{5}$/.test(pin)) {
+        const toastId = toast.loading("Fetching address details for PIN code...");
+        try {
+          // Try Provider 1: api.postalpincode.in
+          try {
+            const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data[0] && data[0].Status === "Success") {
+                const postOffices = data[0].PostOffice;
+                if (postOffices && postOffices.length > 0) {
+                  const info = postOffices[0];
+                  setShippingAddress(prev => ({
+                    ...prev,
+                    area: info.Name || "",
+                    city: info.District || info.Block || "",
+                    state: info.State || ""
+                  }));
+                  toast.success("Address details auto-filled!", { id: toastId });
+                  return;
+                }
+              }
+            }
+          } catch (p1Err) {
+            console.warn("Provider 1 (postalpincode.in) failed, trying fallback...", p1Err);
+          }
+
+          // Fallback to Provider 2: api.zippopotam.us (Has highly reliable valid certificates)
+          const response = await fetch(`https://api.zippopotam.us/IN/${pin}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.places && data.places.length > 0) {
+              const info = data.places[0];
+              setShippingAddress(prev => ({
+                ...prev,
+                area: info["place name"] || "",
+                city: info["place name"] || "",
+                state: info["state"] || ""
+              }));
+              toast.success("Address details auto-filled (via backup)!", { id: toastId });
+              return;
+            }
+          }
+          
+          toast.error("Pincode service currently unavailable. Please enter details manually.", { id: toastId });
+        } catch (error) {
+          console.error("Error fetching PIN code details:", error);
+          toast.error("Failed to fetch address. Please fill manually.", { id: toastId });
+        }
+      }
+    };
+
+    fetchAddressDetails();
+  }, [shippingAddress.postalCode]);
+
+  useEffect(() => {
+    const fetchShippingRates = async () => {
+      const pin = shippingAddress.postalCode;
+      if (/^[1-9][0-9]{5}$/.test(pin) && cartItems.length > 0) {
+        setIsFetchingRates(true);
+        try {
+          const response = await api.post("/shipping/calculate-rates", {
+            items: cartItems.map(item => ({ product: item._id, quantity: item.quantity })),
+            deliveryPostcode: pin,
+            cod: paymentMethod === "COD"
+          });
+          if (response.data.status === "success") {
+            const rates = response.data.data.rates;
+            setShippingRates(rates);
+            if (rates.length > 0) {
+              const cheapest = rates.reduce((min: any, r: any) => r.rate < min.rate ? r : min, rates[0]);
+              setSelectedRate(cheapest);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch shipping rates:", error);
+          setShippingRates([]);
+          setSelectedRate(null);
+        } finally {
+          setIsFetchingRates(false);
+        }
+      } else {
+        setShippingRates([]);
+        setSelectedRate(null);
+      }
+    };
+
+    fetchShippingRates();
+  }, [shippingAddress.postalCode, paymentMethod, products]);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const handleCreateOrder = async () => {
+    if (!shippingAddress.fullName || !shippingAddress.addressLine1 || !shippingAddress.city || !shippingAddress.postalCode || !shippingAddress.phone) {
+      toast.error("Please fill in all shipping details first");
+      setCurrentStep(Step.Shipping);
+      return;
+    }
+
+    if (shippingRates.length > 0 && !selectedRate) {
+      toast.error("Courier delivery services are currently unavailable for this pincode.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const orderData = {
         items: cartItems.map(item => ({
           product: item._id,
           quantity: item.quantity,
-          price: item.price
+          price: item.price,
+          selectedVariant: item.selectedVariant ? {
+            id: item.selectedVariant.id,
+            name: item.selectedVariant.name,
+            options: item.selectedVariant.options
+          } : undefined
         })),
         shippingAddress,
         paymentMethod,
         totalAmount,
-        couponCode: appliedCoupon?.code
+        couponCode: appliedCoupon?.code,
+        shippingFee: selectedRate ? selectedRate.rate : 0
       };
 
-      await api.post("/orders", orderData);
+      const res = await api.post("/orders", orderData);
+      const { user: updatedUser, razorpay: rpData, order } = res.data.data;
+      if (updatedUser) {
+        const token = localStorage.getItem("token");
+        if (token) login(token, updatedUser);
+      }
       
-      setCurrentStep(Step.Confirmation);
-      clearCart();
-      localStorage.removeItem("appliedCouponCode");
-      toast.success("Order placed successfully");
+      if (paymentMethod === "Online" && rpData) {
+        const isScriptLoaded = await loadRazorpayScript();
+        if (!isScriptLoaded) {
+          toast.error("Failed to load Razorpay. Check your connection.");
+          setIsSubmitting(false);
+          if (order) {
+            await api.post(`/orders/${order._id}/cancel`).catch(err => console.error(err));
+          }
+          return;
+        }
+
+        const options = {
+          key: rpData.keyId,
+          amount: rpData.amount,
+          currency: rpData.currency,
+          name: "Prisha Crafts",
+          description: "Order Checkout Payment",
+          order_id: rpData.id,
+          handler: async function (response: any) {
+            setIsSubmitting(true);
+            const toastId = toast.loading("Verifying transaction...");
+            try {
+              const verifyRes = await api.post("/payment/verify", {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+
+              if (verifyRes.data.status === "success") {
+                toast.success("Payment verified successfully!", { id: toastId });
+                setCurrentStep(Step.Confirmation);
+                clearCart();
+                localStorage.removeItem("appliedCouponCode");
+              } else {
+                toast.error("Payment signature verification failed.", { id: toastId });
+              }
+            } catch (err: any) {
+              toast.error(err.response?.data?.message || "Verification API error", { id: toastId });
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+          prefill: {
+            name: shippingAddress.fullName,
+            contact: shippingAddress.phone,
+            email: user?.email || ""
+          },
+          theme: {
+            color: "#000000"
+          },
+          modal: {
+            ondismiss: async function () {
+              toast.error("Payment cancelled by user");
+              setIsSubmitting(false);
+              if (order) {
+                try {
+                  await api.post(`/orders/${order._id}/cancel`);
+                } catch (err) {
+                  console.error("Failed to cancel order on modal close", err);
+                }
+              }
+            }
+          }
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      } else {
+        setCurrentStep(Step.Confirmation);
+        clearCart();
+        localStorage.removeItem("appliedCouponCode");
+        toast.success("Order placed successfully");
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Order placement failed");
     } finally {
-      setIsSubmitting(false);
+      if (paymentMethod !== "Online") {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -236,7 +470,7 @@ export default function CheckoutPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
           {/* Main Form Area */}
-          <div className="lg:col-span-8">
+          <div className={currentStep === Step.Confirmation ? "lg:col-span-12 max-w-3xl mx-auto w-full" : "lg:col-span-8"}>
             <AnimatePresence mode="wait">
               {currentStep === Step.Shipping && (
                 <motion.div
@@ -283,6 +517,17 @@ export default function CheckoutPage() {
                            className="w-full h-14 pl-14 pr-6 bg-secondary/30 border-none rounded-2xl font-bold focus:ring-2 focus:ring-primary/20 outline-none"
                          />
                        </div>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Area</label>
+                       <input 
+                         type="text" 
+                         placeholder="Area, Colony, Landmark, etc." 
+                         value={shippingAddress.area}
+                         onChange={(e) => setShippingAddress({...shippingAddress, area: e.target.value})}
+                         className="w-full h-14 px-6 bg-secondary/30 border-none rounded-2xl font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                       />
                     </div>
 
                     <div className="space-y-2">
@@ -332,6 +577,30 @@ export default function CheckoutPage() {
                        </div>
                     </div>
                   </div>
+
+                  {/* Shiprocket Courier Serviceability Info (Auto-Selected Cheapest) */}
+                  {shippingAddress.postalCode && /^[1-9][0-9]{5}$/.test(shippingAddress.postalCode) && (
+                    <div className="mt-8 pt-8 border-t border-border/40 space-y-4">
+                      {isFetchingRates ? (
+                        <div className="flex items-center gap-3 p-4 bg-secondary/10 rounded-2xl border border-border/20">
+                          <Loader2 className="animate-spin text-primary" size={16} />
+                          <span className="text-xs font-bold text-muted-foreground">Calculating standard delivery charges...</span>
+                        </div>
+                      ) : shippingRates.length === 0 ? (
+                        <div className="p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 text-xs font-bold text-left">
+                          No delivery services available for this pincode. Please verify your delivery postcode.
+                        </div>
+                      ) : selectedRate ? (
+                        <div className="p-6 bg-green-50/50 rounded-2xl border border-green-100 flex items-center justify-between text-left animate-fade-in">
+                          <div className="space-y-1">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-green-700">🚚 Secure Delivery Partner Assigned</h4>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase">Estimated Delivery: {selectedRate.etd}</p>
+                          </div>
+                          <span className="text-sm font-black text-green-700">₹{selectedRate.rate}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
 
                   <div className="mt-12 flex flex-col-reverse sm:flex-row justify-between gap-6">
                     <Link to="/cart" className="flex items-center justify-center sm:justify-start gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-black transition-all">
@@ -386,17 +655,18 @@ export default function CheckoutPage() {
 
                     <div 
                       onClick={() => setPaymentMethod("Online")}
-                      className={`p-8 rounded-[2rem] border-2 cursor-pointer transition-all flex items-center justify-between opacity-60 grayscale cursor-not-allowed ${paymentMethod === "Online" ? "border-primary bg-primary/5" : "border-border/40 bg-secondary/20"}`}
+                      className={`p-8 rounded-[2rem] border-2 cursor-pointer transition-all flex items-center justify-between ${paymentMethod === "Online" ? "border-primary bg-primary/5" : "border-border/40 bg-secondary/20 hover:border-border"}`}
                     >
-                      <div className="flex items-center gap-6">
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center border-muted-foreground/30`}>
+                      <div className="flex items-center gap-6 text-left">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${paymentMethod === "Online" ? "border-primary" : "border-muted-foreground/30"}`}>
+                           {paymentMethod === "Online" && <div className="w-3 h-3 bg-primary rounded-full" />}
                         </div>
                         <div>
                           <h3 className="font-heading font-black uppercase tracking-wider">Online Payment (UPI/Card)</h3>
-                          <p className="text-[11px] text-muted-foreground font-bold italic">Currently unavailable — we're working on it!</p>
+                          <p className="text-[11px] text-muted-foreground font-bold">Secure checkout via Razorpay</p>
                         </div>
                       </div>
-                      <Lock className="text-muted-foreground/20" size={24} />
+                      <CreditCard className={paymentMethod === "Online" ? "text-primary" : "text-muted-foreground/20"} size={24} />
                     </div>
                   </div>
 
@@ -455,84 +725,91 @@ export default function CheckoutPage() {
           </div>
 
           {/* Sidebar Area: Order Summary */}
-          <div className="lg:col-span-4 sticky top-28">
-            <div className="bg-white rounded-[2.5rem] p-10 border border-border/40 luxury-shadow relative overflow-hidden">
-               <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[60px]" />
-               
-               <h3 className="text-xl font-heading font-black mb-10 flex items-center gap-3 border-b border-border/10 pb-6 text-foreground/90 uppercase tracking-widest">
-                Order Summary
-               </h3>
+          {currentStep !== Step.Confirmation && (
+            <div className="lg:col-span-4 sticky top-28">
+              <div className="bg-white rounded-[2.5rem] p-10 border border-border/40 luxury-shadow relative overflow-hidden">
+                 <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[60px]" />
+                 
+                 <h3 className="text-xl font-heading font-black mb-10 flex items-center gap-3 border-b border-border/10 pb-6 text-foreground/90 uppercase tracking-widest">
+                  Order Summary
+                 </h3>
 
-               <div className="space-y-6 mb-10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                 {cartItems.map((item) => (
-                   <div key={item._id} className="flex gap-4">
-                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-secondary/30 shrink-0 border border-border/5">
-                        <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                 <div className="space-y-6 mb-10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                   {cartItems.map((item) => (
+                     <div key={`${item._id}_${item.selectedVariant?.id || "none"}`} className="flex gap-4">
+                       <div className="w-16 h-16 rounded-xl overflow-hidden bg-secondary/30 shrink-0 border border-border/5">
+                          <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                       </div>
+                       <div className="flex-1">
+                          <h4 className="text-[11px] font-black uppercase tracking-wider mb-1 text-foreground/90 line-clamp-1">{item.name}</h4>
+                          {item.selectedVariant && (
+                            <p className="text-[9px] text-primary font-black uppercase tracking-wider mb-0.5">Option: {item.selectedVariant.name}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase">Qty: {item.quantity}</p>
+                       </div>
+                       <span className="text-[12px] font-black text-primary">₹{(item.price * item.quantity).toLocaleString()}</span>
                      </div>
-                     <div className="flex-1">
-                        <h4 className="text-[11px] font-black uppercase tracking-wider mb-1 text-foreground/90 line-clamp-1">{item.name}</h4>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase">Qty: {item.quantity}</p>
-                     </div>
-                     <span className="text-[12px] font-black text-primary">₹{(item.price * item.quantity).toLocaleString()}</span>
+                   ))}
+                 </div>
+
+                 <div className="space-y-4 pt-6 border-t border-border/10">
+                   <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                     <span>Items Subtotal</span>
+                     <span className="text-foreground">₹{subtotal.toLocaleString()}</span>
                    </div>
-                 ))}
-               </div>
-
-               <div className="space-y-4 pt-6 border-t border-border/10">
-                 <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                   <span>Items Subtotal</span>
-                   <span className="text-foreground">₹{subtotal.toLocaleString()}</span>
-                 </div>
-                 {appliedCoupon && (
-                    <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-primary">
-                      <span>Discount ({appliedCoupon.code})</span>
-                      <span>- ₹{appliedCoupon.discountAmount.toLocaleString()}</span>
-                    </div>
-                  )}
-                 <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                   <span>Shipping Cost</span>
-                   <span className="text-primary italic">FREE</span>
-                 </div>
-                 <div className="flex justify-between items-end pt-4">
-                   <span className="text-[13px] font-black uppercase tracking-widest text-foreground">Grand Total</span>
-                   <span className="text-3xl font-heading font-black text-primary leading-none">₹{totalAmount.toLocaleString()}</span>
-                 </div>
-               </div>
-
-               {/* Coupon Code Input in Checkout */}
-               <div className="mt-8 pt-6 border-t border-border/10">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-3">Promo Code</p>
-                  {appliedCoupon ? (
-                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/10">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 size={14} className="text-primary" />
-                        <span className="font-bold text-xs text-foreground uppercase">{appliedCoupon.code}</span>
+                   {appliedCoupon && (
+                      <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-primary">
+                        <span>Discount ({appliedCoupon.code})</span>
+                        <span>- ₹{appliedCoupon.discountAmount.toLocaleString()}</span>
                       </div>
-                      <button onClick={removeCoupon} className="p-1 hover:bg-black/5 rounded-full transition-colors">
-                        <X size={14} className="text-muted-foreground" />
-                      </button>
+                    )}
+                    <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                      <span>Shipping Cost</span>
+                      <span className="text-foreground">
+                        {selectedRate ? `₹${selectedRate.rate}` : (isFetchingRates ? "..." : "FREE")}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex gap-2">
-                       <input 
-                        type="text" 
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        placeholder="ENTER CODE"
-                        className="flex-1 h-11 px-4 bg-secondary/30 border border-border/10 rounded-xl text-[10px] font-black uppercase tracking-widest focus:ring-1 focus:ring-primary/40 outline-none text-foreground placeholder:text-muted-foreground/30"
-                      />
-                      <button 
-                        onClick={applyCoupon}
-                        disabled={isApplying || !couponCode}
-                        className="h-11 px-6 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-30"
-                      >
-                        {isApplying ? "..." : "Apply"}
-                      </button>
-                    </div>
-                  )}
-               </div>
+                   <div className="flex justify-between items-end pt-4">
+                     <span className="text-[13px] font-black uppercase tracking-widest text-foreground">Grand Total</span>
+                     <span className="text-3xl font-heading font-black text-primary leading-none">₹{totalAmount.toLocaleString()}</span>
+                   </div>
+                 </div>
+
+                 {/* Coupon Code Input in Checkout */}
+                 <div className="mt-8 pt-6 border-t border-border/10">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-3">Promo Code</p>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/10">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={14} className="text-primary" />
+                          <span className="font-bold text-xs text-foreground uppercase">{appliedCoupon.code}</span>
+                        </div>
+                        <button onClick={removeCoupon} className="p-1 hover:bg-black/5 rounded-full transition-colors">
+                          <X size={14} className="text-muted-foreground" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                         <input 
+                          type="text" 
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          placeholder="ENTER CODE"
+                          className="flex-1 h-11 px-4 bg-secondary/30 border border-border/10 rounded-xl text-[10px] font-black uppercase tracking-widest focus:ring-1 focus:ring-primary/40 outline-none text-foreground placeholder:text-muted-foreground/30"
+                        />
+                        <button 
+                          onClick={applyCoupon}
+                          disabled={isApplying || !couponCode}
+                          className="h-11 px-6 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-30"
+                        >
+                          {isApplying ? "..." : "Apply"}
+                        </button>
+                      </div>
+                    )}
+                 </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

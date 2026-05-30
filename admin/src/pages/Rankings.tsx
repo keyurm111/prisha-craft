@@ -28,6 +28,9 @@ interface Product {
   category: { _id: string; name: string } | string;
   mainImage: string;
   sku?: string;
+  variants?: Array<{
+    image?: string;
+  }>;
 }
 
 interface RankingUpdate {
@@ -213,7 +216,17 @@ export default function Rankings() {
                         </div>
                         
                         <div className="w-12 h-12 md:w-20 md:h-20 rounded-lg md:rounded-2xl overflow-hidden bg-secondary/30 shrink-0 border border-border/20 shadow-sm">
-                            <img src={(item as any).mainImage || (item as any).image || "https://placehold.co/200"} className="w-full h-full object-cover" />
+                            {(() => {
+                                const isProduct = activeTab !== "categories";
+                                let displayImage = (item as any).mainImage || (item as any).image;
+                                if (isProduct && (item as any).variants && (item as any).variants.length > 0) {
+                                    const firstVariant = (item as any).variants[0];
+                                    if (firstVariant.image) {
+                                        displayImage = firstVariant.image;
+                                    }
+                                }
+                                return <img src={displayImage || "https://placehold.co/200"} className="w-full h-full object-cover" />;
+                            })()}
                         </div>
 
                         <div className="min-w-0 flex-1">

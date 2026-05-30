@@ -28,7 +28,11 @@ app.use(cors({
 }));
 
 // Middlewares
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -52,6 +56,9 @@ const sliderRouter = require("./routes/sliderRoutes");
 const blogRouter = require("./routes/blogRoutes");
 const couponRouter = require("./routes/couponRoutes");
 const configRouter = require("./routes/configRoutes");
+const testimonialRouter = require("./routes/testimonialRoutes");
+const shippingRouter = require("./routes/shippingRoutes");
+const paymentRouter = require("./routes/paymentRoutes");
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
@@ -64,6 +71,9 @@ app.use("/api/v1/sliders", sliderRouter);
 app.use("/api/v1/blogs", blogRouter);
 app.use("/api/v1/coupons", couponRouter);
 app.use("/api/v1/config", configRouter);
+app.use("/api/v1/testimonials", testimonialRouter);
+app.use("/api/v1/shipping", shippingRouter);
+app.use("/api/v1/payment", paymentRouter);
 
 // Basic Route
 app.get("/", (req, res) => {

@@ -21,6 +21,14 @@ const orderSchema = new mongoose.Schema({
       price: {
         type: Number,
         required: [true, "Order item must have a price at time of purchase"]
+      },
+      selectedVariant: {
+        id: String,
+        name: String,
+        options: {
+          type: Map,
+          of: String
+        }
       }
     }
   ],
@@ -36,7 +44,7 @@ const orderSchema = new mongoose.Schema({
   shippingAddress: {
     fullName: String,
     addressLine1: String,
-    addressLine2: String,
+    area: String,
     city: String,
     state: String,
     postalCode: String,
@@ -50,7 +58,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ["Pending", "Paid", "Failed", "Refunded"],
+    enum: ["Pending", "Paid", "Failed", "Refunded", "Refund Pending", "Refund Initiated", "Refund Failed"],
     default: "Pending"
   },
   transactionId: String,
@@ -58,6 +66,16 @@ const orderSchema = new mongoose.Schema({
     type: Map,
     of: String
   },
+  cancellationReason: String,
+  refundError: String,
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
+  razorpaySignature: String,
+  shiprocketOrderId: String,
+  shiprocketShipmentId: String,
+  shiprocketAwbCode: String,
+  shiprocketLabelUrl: String,
+  shiprocketTrackingUrl: String,
   shippingDimensions: {
     length: { type: Number, default: 0 }, // in cm
     width: { type: Number, default: 0 },  // in cm

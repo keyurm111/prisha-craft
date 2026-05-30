@@ -15,15 +15,27 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
   const wishlisted = isInWishlist(product._id);
-  const discount = product.mrp && product.mrp > product.price 
-    ? Math.round(((product.mrp - product.price) / product.mrp) * 100) 
+
+  const firstVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
+  const displayPrice = firstVariant && firstVariant.price !== undefined ? firstVariant.price : product.price;
+  const displayMrp = firstVariant && firstVariant.mrp !== undefined ? firstVariant.mrp : product.mrp;
+  const displayImage = firstVariant && firstVariant.image ? firstVariant.image : product.mainImage;
+
+  const discount = displayMrp && displayMrp > displayPrice 
+    ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) 
     : 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product._id, 1);
-    toast.success(`${product.name} added to cart!`);
+    const variantData = firstVariant ? {
+      id: firstVariant._id,
+      name: Object.entries(firstVariant.options).map(([k, v]) => `${k}: ${v}`).join(" / "),
+      options: firstVariant.options
+    } : undefined;
+
+    addToCart(product._id, 1, variantData);
+    toast.success(`${product.name}${variantData ? ` (${variantData.name})` : ''} added to cart!`);
   };
 
   return (
@@ -32,12 +44,12 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       viewport={{ once: true }}
-      className="group relative flex flex-col h-full touch-pan-y will-change-transform"
+      className="group relative flex flex-col h-full will-change-transform"
     >
       <div className="relative overflow-hidden rounded-2xl bg-secondary aspect-[4/5] shadow-sm group-hover:shadow-xl transition-[box-shadow] duration-500 will-change-[box-shadow]">
         <Link to={`/product/${product._id}`} className="block h-full w-full">
           <img
-            src={product.mainImage}
+            src={displayImage}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 will-change-transform"
             loading="lazy"
@@ -80,10 +92,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
           </Link>
           <div className="flex flex-col items-end">
             <span className="font-heading font-bold text-lg text-foreground whitespace-nowrap">
-              ₹{product.price.toLocaleString()}
+              ₹{displayPrice.toLocaleString()}
             </span>
-            {discount > 0 && (
-              <span className="text-[10px] text-muted-foreground line-through">₹{product.mrp.toLocaleString()}</span>
+            {discount > 0 && displayMrp && (
+              <span className="text-[10px] text-muted-foreground line-through">₹{displayMrp.toLocaleString()}</span>
             )}
           </div>
         </div>

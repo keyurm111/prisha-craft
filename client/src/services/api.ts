@@ -23,4 +23,21 @@ api.interceptors.request.use(
   }
 );
 
+// Add a response interceptor to handle token expiration/invalid signature errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn("🔐 Session expired or invalid signature. Logging out...");
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirect to login if not already there
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

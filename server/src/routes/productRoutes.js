@@ -6,10 +6,9 @@ const router = express.Router();
 
 router.get("/", productController.getAllProducts);
 router.get("/:id", productController.getProduct);
-// Protected routes for admin (role check can be added later)
-router.post("/", authMiddleware.protect, productController.createProduct);
-router.patch("/update-rankings", authMiddleware.protect, productController.updateRankings);
-router.patch("/:id", authMiddleware.protect, productController.updateProduct);
-router.delete("/:id", authMiddleware.protect, productController.deleteProduct);
+router.post("/", authMiddleware.protect, authMiddleware.restrictTo("admin"), productController.createProduct);
+router.patch("/update-rankings", authMiddleware.protect, authMiddleware.restrictTo("admin"), productController.updateRankings);
+router.patch("/:id", authMiddleware.protect, authMiddleware.restrictTo("admin"), productController.updateProduct);
+router.delete("/:id", authMiddleware.protect, authMiddleware.restrictTo("admin"), productController.deleteProduct);
 
 module.exports = router;

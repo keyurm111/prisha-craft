@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import api from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -15,6 +17,7 @@ export default function SignupPage() {
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,19 +129,14 @@ export default function SignupPage() {
               {!isLoading && <ArrowRight size={16} />}
             </Button>
 
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full h-10.5 rounded-lg font-bold text-xs gap-3 border border-border/50 hover:bg-secondary/30 transition-all bg-white text-black"
-              onClick={() => toast.info("Google Signup coming soon!")}
-            >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
-                alt="Google" 
-                className="w-4 h-4"
-              />
-              Google
-            </Button>
+            <GoogleLoginButton
+              text="signup_with"
+              onSuccess={(token, user) => {
+                login(token, user);
+                toast.success(`Welcome to Prisha Crafts, ${user.name}!`);
+                navigate("/");
+              }}
+            />
           </form>
 
           <p className="mt-6 text-xs text-center text-muted-foreground font-medium">

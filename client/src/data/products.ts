@@ -18,6 +18,20 @@ export interface Product {
     height: number;
     weight: number;
   };
+  variants?: Array<{
+    _id: string;
+    sku?: string;
+    options: Record<string, string>;
+    price?: number;
+    mrp?: number;
+    stock?: number;
+    image?: string;
+    images?: string[];
+  }>;
+  variantOptions?: Array<{
+    name: string;
+    values: string[];
+  }>;
 }
 
 export const WHATSAPP_NUMBER = "919999999999";

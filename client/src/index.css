@@ -64,12 +64,12 @@
     @apply bg-background text-foreground;
     font-family: var(--font-body);
     width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   html {
     width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 }
 

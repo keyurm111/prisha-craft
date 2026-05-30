@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.post("/signup", authController.signup);
 router.post("/login", authController.login);
+router.post("/google", authController.googleLogin);
 router.patch("/updatePassword", authMiddleware.protect, authController.updatePassword);
 
 module.exports = router;

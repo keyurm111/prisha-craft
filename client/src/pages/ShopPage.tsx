@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, X, Search, Loader2, Tag, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
@@ -18,14 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+
 
 interface Category {
   _id: string;
@@ -41,6 +34,16 @@ interface Product {
   category: { _id: string; name: string };
   slug: string;
   featured?: boolean;
+  variants?: Array<{
+    _id?: string;
+    sku?: string;
+    options: Record<string, string>;
+    price?: number;
+    mrp?: number;
+    stock?: number;
+    image?: string;
+    images?: string[];
+  }>;
 }
 
 export default function ShopPage() {
@@ -48,7 +51,6 @@ export default function ShopPage() {
   
   // State from URL or Defaults
   const category = searchParams.get("category") || "all";
-  const page = parseInt(searchParams.get("page") || "1");
   const sortParam = searchParams.get("sort");
   const sortBy = sortParam && sortParam.trim() !== "" ? sortParam : "recommended";
   const search = searchParams.get("search") || "";
@@ -65,28 +67,18 @@ export default function ShopPage() {
   const [localSearch, setLocalSearch] = useState(search);
   const [localMin, setLocalMin] = useState(minPrice);
   const [localMax, setLocalMax] = useState(maxPrice);
+  
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const [page, setPage] = useState(1);
+
+  const fetchData = useCallback(async (pageToFetch: number, append: boolean = false) => {
     setIsLoading(true);
     try {
-      const params: any = {
-        page,
-        limit: 9,
-        sort: sortBy,
-      };
-
-      if (category !== "all") params.category = category;
-      if (search) params.search = search;
-      if (minPrice) params.price = { ...params.price, gte: minPrice };
-      if (maxPrice) params.price = { ...params.price, lte: maxPrice };
-
-      // Flatten price if needed for the API
-      // Our API expects ?price[gte]=...
-      // We'll construct the query string manually or via axios params
-      
       const queryParams = new URLSearchParams();
-      queryParams.set("page", page.toString());
-      queryParams.set("limit", "9");
+      queryParams.set("page", pageToFetch.toString());
+      queryParams.set("limit", "12");
       if (sortBy !== "recommended") queryParams.set("sort", sortBy);
       if (category !== "all") queryParams.set("category", category);
       if (search) queryParams.set("search", search);
@@ -98,7 +90,11 @@ export default function ShopPage() {
         api.get("/categories")
       ]);
       
-      setProducts(pRes.data.data.products);
+      if (append) {
+        setProducts(prev => [...prev, ...pRes.data.data.products]);
+      } else {
+        setProducts(pRes.data.data.products);
+      }
       setTotalCount(pRes.data.totalCount || 0);
       setCategories(cRes.data.data.categories);
     } catch (error) {
@@ -106,10 +102,11 @@ export default function ShopPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [category, page, sortBy, search, minPrice, maxPrice]);
+  }, [category, sortBy, search, minPrice, maxPrice]);
 
   useEffect(() => {
-    fetchData();
+    fetchData(1, false);
+    setPage(1);
   }, [fetchData]);
 
   // Debounce search effect
@@ -122,9 +119,33 @@ export default function ShopPage() {
     return () => clearTimeout(timer);
   }, [localSearch]);
 
+  // Debounce suggestions fetch
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (localSearch.trim().length < 2) {
+        setSuggestions([]);
+        return;
+      }
+      try {
+        const response = await api.get(`/products?search=${encodeURIComponent(localSearch)}&limit=5`);
+        setSuggestions(response.data.data.products);
+      } catch (error) {
+        console.error("Failed to fetch search suggestions", error);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [localSearch]);
+
   const updateParams = (updates: Record<string, string>) => {
     const newParams = new URLSearchParams(searchParams);
+    newParams.delete("page");
     Object.entries(updates).forEach(([key, value]) => {
+      if (key === "page") return;
       if (value === "" || (key === "category" && value === "all") || (key === "sort" && value === "recommended")) {
         newParams.delete(key);
       } else {
@@ -134,7 +155,11 @@ export default function ShopPage() {
     setSearchParams(newParams);
   };
 
-  const totalPages = Math.ceil(totalCount / 9);
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    fetchData(nextPage, true);
+    setPage(nextPage);
+  };
 
   return (
     <div className="container mx-auto px-4 lg:px-8 py-16">
@@ -198,7 +223,7 @@ export default function ShopPage() {
                       <Input
                         type="number"
                         placeholder="0"
-                        className="h-12 bg-secondary/30 border-none rounded-xl font-bold"
+                        className="h-12 bg-secondary/30 border border-transparent rounded-xl font-bold transition-all focus-visible:border-primary focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
                         value={localMin}
                         onChange={(e) => setLocalMin(e.target.value)}
                         onBlur={() => updateParams({ minPrice: localMin, page: "1" })}
@@ -209,7 +234,7 @@ export default function ShopPage() {
                       <Input
                         type="number"
                         placeholder="∞"
-                        className="h-12 bg-secondary/30 border-none rounded-xl font-bold"
+                        className="h-12 bg-secondary/30 border border-transparent rounded-xl font-bold transition-all focus-visible:border-primary focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
                         value={localMax}
                         onChange={(e) => setLocalMax(e.target.value)}
                         onBlur={() => updateParams({ maxPrice: localMax, page: "1" })}
@@ -232,7 +257,37 @@ export default function ShopPage() {
                 className="w-full pl-14 h-14 bg-background border-none rounded-3xl text-sm font-bold outline-none"
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-16 left-0 right-0 bg-white rounded-[1.5rem] shadow-2xl border border-border/40 z-50 overflow-hidden divide-y divide-border/10 text-left">
+                  {suggestions.map((p) => {
+                    const firstVariant = p.variants && p.variants.length > 0 ? p.variants[0] : null;
+                    const displayPrice = firstVariant && firstVariant.price !== undefined ? firstVariant.price : p.price;
+                    const displayImage = firstVariant && firstVariant.image ? firstVariant.image : p.mainImage;
+
+                    return (
+                      <Link
+                        key={p._id}
+                        to={`/product/${p._id}`}
+                        className="flex items-center gap-4 p-4 hover:bg-secondary/40 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary">
+                          <img src={displayImage} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black uppercase text-foreground truncate">{p.name}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{p.category?.name}</p>
+                        </div>
+                        <div className="text-xs font-black text-primary">
+                          ₹{displayPrice.toLocaleString()}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             
             <div className="flex items-center gap-8 px-4">
@@ -254,7 +309,7 @@ export default function ShopPage() {
             </div>
           </div>
 
-          {isLoading ? (
+          {isLoading && page === 1 ? (
             <div className="flex flex-col items-center justify-center py-40 gap-4">
               <Loader2 className="animate-spin text-primary" size={40} />
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Loading Products...</p>
@@ -277,35 +332,22 @@ export default function ShopPage() {
                 </div>
               )}
 
-              {totalPages > 1 && (
-                <div className="mt-20">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => page > 1 && updateParams({ page: (page - 1).toString() })}
-                          className={`cursor-pointer ${page === 1 ? 'pointer-events-none opacity-50' : ''}`}
-                        />
-                      </PaginationItem>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                        <PaginationItem key={p}>
-                          <PaginationLink
-                            isActive={p === page}
-                            onClick={() => updateParams({ page: p.toString() })}
-                            className="cursor-pointer font-black text-[11px]"
-                          >
-                            {p}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => page < totalPages && updateParams({ page: (page + 1).toString() })}
-                          className={`cursor-pointer ${page === totalPages ? 'pointer-events-none opacity-50' : ''}`}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+              {products.length < totalCount && products.length > 0 && (
+                <div className="mt-20 flex justify-center">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoading}
+                    className="group relative inline-flex items-center gap-3 px-10 py-5 bg-black text-white font-black text-[11px] tracking-[0.2em] uppercase rounded-full hover:bg-black/90 active:scale-95 transition-all luxury-shadow disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        <span>Loading...</span>
+                      </>
+                    ) : (
+                      <span>View More Products</span>
+                    )}
+                  </button>
                 </div>
               )}
             </>

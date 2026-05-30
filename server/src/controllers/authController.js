@@ -1,5 +1,8 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -100,6 +103,55 @@ exports.updatePassword = async (req, res) => {
     await user.save();
 
     // 4) Log user in, send JWT
+    createSendToken(user, 200, res);
+  } catch (err) {
+    res.status(400).json({
+      status: "fail",
+      message: err.message
+    });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Google token is required"
+      });
+    }
+
+    // Verify token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name } = payload;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // If user exists but doesn't have googleId associated, associate it
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save({ validateBeforeSave: false }); // skip password requirement validation
+      }
+    } else {
+      // Create user with a generated password (bypassing validation constraint)
+      const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).toUpperCase().slice(-10);
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        password: randomPassword
+      });
+    }
+
+    // Send JWT token
     createSendToken(user, 200, res);
   } catch (err) {
     res.status(400).json({
