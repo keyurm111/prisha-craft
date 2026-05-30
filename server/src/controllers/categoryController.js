@@ -21,6 +21,7 @@ exports.getAllCategories = async (req, res) => {
       data: { categories }
     });
   } catch (err) {
+    console.error("❌ Error in getAllCategories:", err);
     res.status(400).json({ status: "fail", message: err.message });
   }
 };

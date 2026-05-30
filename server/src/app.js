@@ -39,15 +39,36 @@ app.use(cookieParser());
 // Static Files
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
-// Database Connection
-const mongoURI = process.env.MONGODB_URI;
-if (!mongoURI) {
-  console.error("❌ MONGODB_URI environment variable is missing! Please configure it in your Vercel Project Settings.");
-} else {
-  mongoose.connect(mongoURI)
-    .then(() => console.log("✅ Successfully connected to MongoDB"))
-    .catch((err) => console.error("❌ MongoDB connection error:", err));
-}
+// Database Connection Middleware
+const dbMiddleware = async (req, res, next) => {
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
+  const mongoURI = process.env.MONGODB_URI;
+  if (!mongoURI) {
+    console.error("❌ MONGODB_URI environment variable is missing!");
+    return res.status(500).json({
+      status: "error",
+      message: "MONGODB_URI is not defined in environment variables"
+    });
+  }
+
+  try {
+    console.log("🔄 Connecting to MongoDB...");
+    await mongoose.connect(mongoURI);
+    console.log("✅ Successfully connected to MongoDB");
+    next();
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Database connection failed: " + err.message
+    });
+  }
+};
+
+app.use("/api/v1", dbMiddleware);
 
 // Routes
 const authRouter = require("./routes/authRoutes");

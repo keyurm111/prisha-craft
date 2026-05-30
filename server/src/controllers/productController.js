@@ -74,6 +74,7 @@ exports.getAllProducts = async (req, res) => {
       data: { products }
     });
   } catch (err) {
+    console.error("❌ Error in getAllProducts:", err);
     res.status(400).json({ status: "fail", message: err.message });
   }
 };
