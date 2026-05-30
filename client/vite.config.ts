@@ -8,6 +8,12 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: parseInt(env.VITE_PORT || '5173'),
+      proxy: {
+        '/sitemap.xml': {
+          target: env.VITE_BACKEND_URL || 'http://localhost:5000',
+          changeOrigin: true,
+        }
+      }
     },
     plugins: [react()],
     resolve: {

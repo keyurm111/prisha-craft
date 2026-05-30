@@ -123,6 +123,26 @@ const productSchema = new mongoose.Schema({
   }
 });
 
+// Pre-save hook to generate slug for Category
+categorySchema.pre("save", function(next) {
+  if (this.isModified("name") && !this.slug) {
+    this.slug = this.name.toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+  next();
+});
+
+// Pre-save hook to generate slug for Product
+productSchema.pre("save", function(next) {
+  if (this.isModified("name") && !this.slug) {
+    this.slug = this.name.toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+  next();
+});
+
 productSchema.virtual('discount').get(function() {
   if (this.mrp && this.price) {
     return Math.round(((this.mrp - this.price) / this.mrp) * 100);

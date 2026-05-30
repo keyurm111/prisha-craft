@@ -47,7 +47,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       className="group relative flex flex-col h-full will-change-transform"
     >
       <div className="relative overflow-hidden rounded-2xl bg-secondary aspect-[4/5] shadow-sm group-hover:shadow-xl transition-[box-shadow] duration-500 will-change-[box-shadow]">
-        <Link to={`/product/${product._id}`} className="block h-full w-full">
+        <Link to={`/product/${product.slug || product._id}`} className="block h-full w-full">
           <img
             src={displayImage}
             alt={product.name}
@@ -85,7 +85,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
 
       <div className="mt-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start gap-2 mb-2">
-          <Link to={`/product/${product._id}`} className="flex-1">
+          <Link to={`/product/${product.slug || product._id}`} className="flex-1">
             <h3 className="font-body font-bold text-base leading-snug hover:text-primary transition-colors line-clamp-1">
               {product.name}
             </h3>

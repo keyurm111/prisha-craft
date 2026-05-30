@@ -270,7 +270,7 @@ export default function ShopPage() {
                     return (
                       <Link
                         key={p._id}
-                        to={`/product/${p._id}`}
+                        to={`/product/${p.slug || p._id}`}
                         className="flex items-center gap-4 p-4 hover:bg-secondary/40 transition-colors"
                       >
                         <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary">

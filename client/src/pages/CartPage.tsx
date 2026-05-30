@@ -11,6 +11,7 @@ import { Ticket, X, CheckCircle2 } from "lucide-react";
 interface Product {
   _id: string;
   name: string;
+  slug?: string;
   price: number;
   mainImage: string;
   category: { name: string };
@@ -198,7 +199,7 @@ export default function CartPage() {
               </div>
               
               <div className="flex-1 text-center sm:text-left">
-                <Link to={`/product/${item._id}`} className="hover:text-primary transition-colors">
+                <Link to={`/product/${item.slug || item._id}`} className="hover:text-primary transition-colors">
                   <h3 className="font-body font-bold text-lg mb-1">{item.name}</h3>
                 </Link>
                 {item.selectedVariant && (

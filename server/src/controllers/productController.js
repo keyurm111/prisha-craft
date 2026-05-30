@@ -81,7 +81,12 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate("category");
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+    const query = isObjectId 
+      ? Product.findById(req.params.id) 
+      : Product.findOne({ slug: req.params.id });
+
+    const product = await query.populate("category");
     if (!product) throw new Error("Product not found");
     res.status(200).json({
       status: "success",

@@ -110,6 +110,10 @@ app.use("/api/v1/testimonials", testimonialRouter);
 app.use("/api/v1/shipping", shippingRouter);
 app.use("/api/v1/payment", paymentRouter);
 
+// Sitemap Route
+const sitemapController = require("./controllers/sitemapController");
+app.get("/sitemap.xml", dbMiddleware, sitemapController.getSitemap);
+
 // Basic Route
 app.get("/", (req, res) => {
   res.send("Meili Product Showcase API is running...");
