@@ -395,12 +395,14 @@ export default function Orders() {
                         >
                           Details
                         </button>
-                        <button 
-                          onClick={() => deleteOrder(order._id)}
-                          className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {order.orderStatus !== "Shipped" && order.orderStatus !== "Delivered" && (
+                          <button 
+                            onClick={() => deleteOrder(order._id)}
+                            className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
