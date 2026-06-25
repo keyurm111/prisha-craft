@@ -3,6 +3,8 @@ import { Upload, Link as LinkIcon, X, Loader2, Image as ImageIcon } from 'lucide
 import api from '@/services/api';
 import { toast } from 'sonner';
 
+const MAX_IMAGE_UPLOAD_SIZE = 20 * 1024 * 1024;
+
 interface ImageUploadProps {
   value: string;
   onChange: (url: string) => void;
@@ -18,8 +20,8 @@ export default function ImageUpload({ value, onChange, label = "Feature Image" }
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File is too large (max 5MB)");
+    if (file.size > MAX_IMAGE_UPLOAD_SIZE) {
+      toast.error("File is too large (max 20MB)");
       return;
     }
 
@@ -108,7 +110,7 @@ export default function ImageUpload({ value, onChange, label = "Feature Image" }
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Click to upload</p>
-                  <p className="text-[9px] font-medium text-muted-foreground mt-1">PNG, JPG or WEBP (Max 5MB)</p>
+                  <p className="text-[9px] font-medium text-muted-foreground mt-1">PNG, JPG or WEBP (Max 20MB)</p>
                 </div>
               </>
             )}

@@ -3,6 +3,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 
 const app = express();
@@ -46,7 +47,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Static Files
-app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+const uploadsDir = path.join(__dirname, "../public/uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use("/uploads", express.static(uploadsDir, {
+  maxAge: "30d",
+  immutable: true,
+  etag: true,
+  lastModified: true,
+}));
 
 // Database Connection Middleware
 const dbMiddleware = async (req, res, next) => {
