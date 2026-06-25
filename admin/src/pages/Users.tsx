@@ -151,7 +151,7 @@ export default function Users() {
                   </div>
                   <div className="p-3 sm:p-4 bg-secondary/30 rounded-xl sm:rounded-2xl border border-border/10">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 md:mb-2">Joined</p>
-                    <div className="flex items-center gap-2 font-bold text-xs sm:text-sm">
+                    <div className="admin-number flex items-center gap-2 font-bold text-xs sm:text-sm">
                       <Calendar size={16} className="text-primary" />
                       {new Date(selectedUser.createdAt).toLocaleDateString()}
                     </div>

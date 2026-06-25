@@ -211,7 +211,7 @@ export default function Rankings() {
                     className="p-3 md:p-6 bg-white rounded-xl md:rounded-[2rem] border border-border/30 flex items-center justify-between cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all group shadow-sm active:shadow-lg active:scale-[1.01]"
                 >
                     <div className="flex items-center gap-3 md:gap-8 min-w-0">
-                        <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-secondary/50 flex items-center justify-center text-[9px] md:text-[11px] font-black text-muted-foreground shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="admin-number w-6 h-6 md:w-10 md:h-10 rounded-full bg-secondary/50 flex items-center justify-center text-[9px] md:text-[11px] font-black text-muted-foreground shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
                             {index + 1}
                         </div>
                         

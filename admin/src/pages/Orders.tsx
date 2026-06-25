@@ -311,7 +311,7 @@ export default function Orders() {
                   <tr key={order._id} className="group hover:bg-secondary/10 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex flex-col">
-                        <span className="text-[10px] sm:text-[11px] font-black text-foreground mb-1 uppercase tracking-tighter">#{order._id.slice(-8)}</span>
+                        <span className="admin-number text-[10px] sm:text-[11px] font-black text-foreground mb-1 uppercase">#{order._id.slice(-8)}</span>
                         <span className="text-[10px] font-medium text-muted-foreground uppercase">{order.shippingAddress?.fullName || order.user?.name}</span>
                       </div>
                     </td>
@@ -324,7 +324,7 @@ export default function Orders() {
                          </div>
                          <p className="text-[10px] font-black uppercase tracking-tight truncate max-w-[120px]">
                            {order.items[0]?.product && typeof order.items[0].product === 'object' ? (order.items[0].product as any).name : "Unknown Item"}
-                           {order.items.length > 1 && <span className="text-primary ml-1">+{order.items.length - 1}</span>}
+                           {order.items.length > 1 && <span className="admin-number text-primary ml-1">+{order.items.length - 1}</span>}
                          </p>
                       </div>
                     </td>
@@ -340,7 +340,7 @@ export default function Orders() {
                             {order.orderStatus}
                          </div>
                          {order.shiprocketOrderId ? (
-                           <span className="text-[8px] font-black uppercase bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100 tracking-wider">
+                           <span className="admin-number text-[8px] font-black uppercase bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100">
                              Synced: #{order.shiprocketOrderId.slice(-8)}
                            </span>
                          ) : (
@@ -384,7 +384,7 @@ export default function Orders() {
                            </span>
                         </div>
                      </td>
-                    <td className="px-6 md:px-8 py-5 md:py-6 text-[10px] sm:text-[11px] font-black text-foreground tracking-tighter">
+                    <td className="admin-number px-6 md:px-8 py-5 md:py-6 text-[10px] sm:text-[11px] font-black text-foreground">
                       ₹{order.totalAmount.toLocaleString()}
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6 text-right">
@@ -421,9 +421,9 @@ export default function Orders() {
               <div>
                 <h2 className="text-xl md:text-3xl font-heading font-black tracking-tighter uppercase mb-0.5 md:mb-1 text-foreground">Order Details</h2>
                 <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
-                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">ID: #{selectedOrder._id}</span>
+                  <span className="admin-number text-[9px] md:text-[10px] font-black uppercase text-muted-foreground">ID: #{selectedOrder._id}</span>
                   <span className="hidden md:block w-1 h-1 bg-border rounded-full" />
-                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary italic">Date: {new Date(selectedOrder.createdAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })}</span>
+                  <span className="admin-number text-[9px] md:text-[10px] font-black uppercase text-primary">Date: {new Date(selectedOrder.createdAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })}</span>
                 </div>
               </div>
               <button onClick={() => setSelectedOrder(null)} className="p-2 md:p-3 hover:bg-white rounded-full transition-all shadow-sm">
@@ -582,10 +582,10 @@ export default function Orders() {
                         {item.selectedVariant?.name && (
                           <p className="text-[9px] text-primary font-black uppercase tracking-wider mt-0.5">Option: {item.selectedVariant.name}</p>
                         )}
-                        <p className="text-[11px] font-medium text-muted-foreground/60 mt-0.5">₹{item.price.toLocaleString()} × {item.quantity}</p>
+                        <p className="admin-number text-[11px] font-medium text-muted-foreground/60 mt-0.5">₹{item.price.toLocaleString()} × {item.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-black text-primary">₹{(item.price * item.quantity).toLocaleString()}</p>
+                        <p className="admin-number text-sm font-black text-primary">₹{(item.price * item.quantity).toLocaleString()}</p>
                       </div>
                     </div>
                   ))}
@@ -834,12 +834,12 @@ export default function Orders() {
                     {selectedOrder.couponCode && (
                       <div className="flex justify-between items-center text-green-600 font-black uppercase tracking-widest text-[10px]">
                         <span>Coupon Applied ({selectedOrder.couponCode})</span>
-                        <span className="ml-4">- ₹{selectedOrder.discountAmount?.toLocaleString()}</span>
+                        <span className="admin-number ml-4">- ₹{selectedOrder.discountAmount?.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex flex-col">
                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Grand Total</span>
-                       <p className="text-3xl font-heading font-black text-primary tracking-tighter">₹{selectedOrder.totalAmount.toLocaleString()}</p>
+                       <p className="admin-number text-3xl font-black text-primary">₹{selectedOrder.totalAmount.toLocaleString()}</p>
                     </div>
                  </div>
 

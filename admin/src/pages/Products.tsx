@@ -491,7 +491,7 @@ export default function Products() {
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-black text-foreground uppercase tracking-tight truncate">{product.name}</p>
-                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{product.sku}</p>
+                            <p className="admin-number text-[10px] text-muted-foreground font-black uppercase">{product.sku}</p>
                           </div>
                         </div>
                       </td>
@@ -500,7 +500,7 @@ export default function Products() {
                           {product.category?.name || "Uncategorized"}
                         </span>
                       </td>
-                      <td className="px-6 md:px-8 py-5 md:py-6 text-sm font-black">
+                      <td className="admin-number px-6 md:px-8 py-5 md:py-6 text-sm font-black">
                         ₹{displayPrice.toLocaleString()}
                       </td>
                       <td className="px-6 md:px-8 py-5 md:py-6 text-right">
@@ -874,7 +874,7 @@ export default function Products() {
                     {/* Generated combinations list */}
                     {newProduct.variants.length > 0 && (
                       <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 no-scrollbar">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Generated Combinations ({newProduct.variants.length})</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Generated Combinations <span className="admin-number">({newProduct.variants.length})</span></label>
                         {newProduct.variants.map((variant, idx) => {
                           const optionDesc = Object.entries(variant.options || {})
                             .map(([key, val]) => `${key}: ${val}`)
@@ -1157,7 +1157,7 @@ export default function Products() {
                               onClick={() => toggleProductExpand(product._id)}
                               className="px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
                             >
-                              <span>{product.variants?.length} Variants</span>
+                              <span><span className="admin-number">{product.variants?.length}</span> Variants</span>
                               {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                             </button>
                           ) : (
@@ -1208,7 +1208,7 @@ export default function Products() {
                                     </div>
                                     <div>
                                       <p className="text-[10px] font-black uppercase text-foreground tracking-wide">{optionDesc}</p>
-                                      <p className="text-[8px] text-muted-foreground font-black uppercase tracking-wider">{variant.sku || "No SKU"}</p>
+                                      <p className="admin-number text-[8px] text-muted-foreground font-black uppercase">{variant.sku || "No SKU"}</p>
                                     </div>
                                   </div>
 

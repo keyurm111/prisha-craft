@@ -193,7 +193,7 @@ export default function Testimonials() {
                </p>
 
                <div className="mt-6 pt-4 border-t border-border/10 flex justify-between items-center">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Priority: {t.order}</span>
+                  <span className="admin-number text-[9px] font-black uppercase text-muted-foreground/60">Priority: {t.order}</span>
                   <button 
                      onClick={() => toggleFeatured(t)}
                      className={`text-[8px] md:text-[9px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full border transition-all ${t.featured ? 'border-primary/20 text-primary bg-primary/5' : 'border-border text-muted-foreground bg-transparent'}`}

@@ -156,7 +156,7 @@ export default function ShippingCosts() {
                           <Scale size={18} />
                         </div>
                         <div>
-                          <p className="text-sm font-black text-foreground mb-0.5">
+                          <p className="admin-number text-sm font-black text-foreground mb-0.5">
                             {range.minWeight}g to {range.maxWeight}g
                           </p>
                           <p className="text-[10px] text-muted-foreground font-bold uppercase">
@@ -166,17 +166,17 @@ export default function ShippingCosts() {
                       </div>
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6">
-                      <span className="text-sm font-bold text-foreground">
+                      <span className="admin-number text-sm font-bold text-foreground">
                         {formatWeightLabel(range.minWeight)}
                       </span>
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6">
-                      <span className="text-sm font-bold text-foreground">
+                      <span className="admin-number text-sm font-bold text-foreground">
                         {formatWeightLabel(range.maxWeight)}
                       </span>
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6">
-                      <span className="text-sm font-black text-primary">
+                      <span className="admin-number text-sm font-black text-primary">
                         ₹{range.cost.toLocaleString()}
                       </span>
                     </td>
@@ -270,8 +270,8 @@ export default function ShippingCosts() {
 
                 <div className="bg-secondary/20 p-4 rounded-xl text-[11px] font-bold text-muted-foreground leading-relaxed flex flex-col gap-1">
                   <span>💡 Weight conversions:</span>
-                  <span>• {newRange.minWeight} g = {(newRange.minWeight / 1000).toFixed(3)} kg</span>
-                  <span>• {newRange.maxWeight} g = {(newRange.maxWeight / 1000).toFixed(3)} kg</span>
+                  <span className="admin-number">• {newRange.minWeight} g = {(newRange.minWeight / 1000).toFixed(3)} kg</span>
+                  <span className="admin-number">• {newRange.maxWeight} g = {(newRange.maxWeight / 1000).toFixed(3)} kg</span>
                 </div>
 
                 <button

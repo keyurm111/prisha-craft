@@ -102,7 +102,7 @@ export default function Inquiries() {
                         <span className="text-[9px] font-black uppercase tracking-widest">{inquiry.status}</span>
                       </div>
                     </td>
-                    <td className="px-6 md:px-8 py-5 md:py-6 text-muted-foreground text-[10px] font-bold whitespace-nowrap">
+                    <td className="admin-number px-6 md:px-8 py-5 md:py-6 text-muted-foreground text-[10px] font-bold whitespace-nowrap">
                       {new Date(inquiry.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6 text-right">
@@ -170,9 +170,9 @@ export default function Inquiries() {
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-[10px] font-bold text-muted-foreground px-1">
                   <div className="flex items-center gap-2">
                     <Calendar size={14} />
-                    <span>{new Date(selectedInquiry.createdAt).toLocaleString()}</span>
+                    <span className="admin-number">{new Date(selectedInquiry.createdAt).toLocaleString()}</span>
                   </div>
-                  <div className="uppercase tracking-widest opacity-60">
+                  <div className="admin-number uppercase opacity-60">
                     Ref: #{selectedInquiry._id.slice(-6)}
                   </div>
                 </div>

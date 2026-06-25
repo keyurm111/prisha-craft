@@ -59,6 +59,12 @@
     font-family: var(--font-heading);
     @apply tracking-tight;
   }
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"] {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
 }
 
 @layer utilities {
@@ -81,5 +87,12 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+  .admin-number {
+    font-family: var(--font-body);
+    font-style: normal;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
   }
 }

@@ -166,22 +166,22 @@ export default function Coupons() {
                         </div>
                         <div>
                           <p className="text-sm font-black text-foreground mb-0.5">{coupon.code}</p>
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase">Used: {coupon.usedCount} {coupon.usageLimit ? `/ ${coupon.usageLimit}` : "times"}</p>
+                          <p className="admin-number text-[10px] text-muted-foreground font-bold uppercase">Used: {coupon.usedCount} {coupon.usageLimit ? `/ ${coupon.usageLimit}` : "times"}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-foreground">
+                        <span className="admin-number text-sm font-black text-foreground">
                           {coupon.discountValue}{coupon.discountType === "percentage" ? "%" : " ₹"}
                         </span>
                         <span className="text-[9px] font-black uppercase text-muted-foreground/60">{coupon.discountType} discount</span>
                       </div>
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6">
-                      <p className="text-xs font-bold text-foreground">Min. Purchase: ₹{coupon.minPurchase}</p>
+                      <p className="admin-number text-xs font-bold text-foreground">Min. Purchase: ₹{coupon.minPurchase}</p>
                     </td>
-                    <td className="px-6 md:px-8 py-5 md:py-6 text-[11px] font-bold text-muted-foreground">
+                    <td className="admin-number px-6 md:px-8 py-5 md:py-6 text-[11px] font-bold text-muted-foreground">
                       {new Date(coupon.expiryDate).toLocaleDateString()}
                     </td>
                     <td className="px-6 md:px-8 py-5 md:py-6 text-right">

@@ -82,7 +82,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3 bg-secondary/30 px-4 py-2 rounded-2xl border border-border/40">
           <Calendar size={16} className="text-primary" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <span className="admin-number text-[10px] font-black uppercase text-muted-foreground">
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </span>
         </div>
@@ -147,7 +147,7 @@ export default function Dashboard() {
                       <td className="px-8 py-5">
                         <div className="flex flex-col">
                           <span className="text-sm font-black text-foreground">{order.user?.name || "Anonymous User"}</span>
-                          <span className="text-[10px] text-muted-foreground font-bold">Ref: #{order._id.slice(-6)}</span>
+                          <span className="admin-number text-[10px] text-muted-foreground font-bold">Ref: #{order._id.slice(-6)}</span>
                         </div>
                       </td>
                       <td className="px-8 py-5">
@@ -162,9 +162,9 @@ export default function Dashboard() {
                         </div>
                       </td>
                       <td className="px-8 py-5 text-center">
-                         <span className="text-[10px] font-bold text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</span>
+                         <span className="admin-number text-[10px] font-bold text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</span>
                       </td>
-                      <td className="px-8 py-5 text-right font-black text-sm">
+                      <td className="admin-number px-8 py-5 text-right font-black text-sm">
                         ₹{order.totalAmount.toLocaleString()}
                       </td>
                     </tr>
@@ -198,7 +198,7 @@ export default function Dashboard() {
                   <p className="text-[10px] text-muted-foreground font-bold truncate mb-2">{inquiry.name}</p>
                   <div className="flex items-center gap-2 text-[9px] text-primary font-black uppercase tracking-tighter">
                     <Clock size={10} />
-                    {new Date(inquiry.createdAt).toLocaleDateString()}
+                    <span className="admin-number">{new Date(inquiry.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
@@ -220,7 +220,7 @@ function StatCard({ title, value, icon, trend, trendType }: { title: string, val
         <div className="p-3 bg-primary/5 text-primary rounded-2xl">
           {icon}
         </div>
-        <div className={`flex items-center gap-1 text-[10px] font-black uppercase px-2 py-1 rounded-lg ${
+        <div className={`admin-number flex items-center gap-1 text-[10px] font-black uppercase px-2 py-1 rounded-lg ${
           trendType === 'up' ? 'text-green-600 bg-green-50' : 
           trendType === 'down' ? 'text-red-600 bg-red-50' : 
           'text-muted-foreground bg-secondary'
@@ -232,7 +232,7 @@ function StatCard({ title, value, icon, trend, trendType }: { title: string, val
       </div>
       <div>
         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{title}</p>
-        <h3 className="text-2xl md:text-3xl font-heading font-black tracking-tighter">{value}</h3>
+        <h3 className="admin-number text-2xl md:text-3xl font-black">{value}</h3>
       </div>
     </div>
   );
