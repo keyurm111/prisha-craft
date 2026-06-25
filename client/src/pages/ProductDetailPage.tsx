@@ -24,6 +24,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import api from "@/services/api";
 import ProductCard from "@/components/ProductCard";
+import SEO from "@/components/SEO";
+import {
+  SITE_NAME,
+  buildBreadcrumbSchema,
+  buildProductSchema,
+  getProductPath,
+} from "@/lib/seo";
 
 interface Product {
   _id: string;
@@ -150,6 +157,12 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="container mx-auto px-4 py-32 text-center">
+        <SEO
+          title={`Product Not Found - ${SITE_NAME}`}
+          description="The requested Prisha Crafts product could not be found."
+          canonicalPath={`/product/${id || ""}`}
+          noindex
+        />
         <h1 className="text-3xl font-heading font-black mb-4">Product Not Found</h1>
         <Link to="/shop" className="text-primary font-bold hover:underline uppercase tracking-widest text-xs">
           Return to Shop
@@ -195,6 +208,24 @@ export default function ProductDetailPage() {
     return [product.mainImage, ...(product.images || [])];
   })();
 
+  const productPath = getProductPath(product);
+  const variantLabel = selectedVariant?.options
+    ? Object.values(selectedVariant.options).filter(Boolean).join(" / ")
+    : "";
+  const productTitle = `${product.name}${variantLabel ? ` - ${variantLabel}` : ""} | ${SITE_NAME}`;
+  const productDescription = product.description.replace(/\s+/g, " ").slice(0, 155);
+  const productSchemas = [
+    buildBreadcrumbSchema([
+      { name: "Home", path: "/" },
+      { name: "Shop", path: "/shop" },
+      ...(product.category
+        ? [{ name: product.category.name, path: `/shop?category=${product.category._id}` }]
+        : []),
+      { name: product.name, path: productPath },
+    ]),
+    buildProductSchema(product, selectedVariant),
+  ];
+
   const handleAddToCart = () => {
     if (product.variants && product.variants.length > 0 && !selectedVariant) {
       toast.error("Please select a valid variant combination");
@@ -227,6 +258,13 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEO
+        title={productTitle}
+        description={productDescription}
+        canonicalPath={productPath}
+        image={activeImage || product.mainImage}
+        jsonLd={productSchemas}
+      />
       <div className="container mx-auto px-4 lg:px-8 pt-16 pb-20">
         <Link to="/shop" className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground mb-8 hover:text-black transition-all group">
           <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />

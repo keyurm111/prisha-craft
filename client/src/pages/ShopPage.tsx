@@ -5,6 +5,12 @@ import { Filter, X, Search, Loader2, Tag, LayoutGrid, ChevronLeft, ChevronRight 
 import ProductCard from "@/components/ProductCard";
 import api from "@/services/api";
 import { Input } from "@/components/ui/input";
+import SEO from "@/components/SEO";
+import {
+  SITE_NAME,
+  buildBreadcrumbSchema,
+  buildCollectionPageSchema,
+} from "@/lib/seo";
 import {
   Select,
   SelectContent,
@@ -161,8 +167,41 @@ export default function ShopPage() {
     setPage(nextPage);
   };
 
+  const activeCategoryName =
+    category === "all" ? "" : categories.find((cat) => cat._id === category)?.name || "Collection";
+  const shopPath = `/shop${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const shopTitle = search
+    ? `Search "${search}" - ${SITE_NAME}`
+    : activeCategoryName
+      ? `${activeCategoryName} - ${SITE_NAME}`
+      : `Shop Handcrafted Bags - ${SITE_NAME}`;
+  const shopDescription = search
+    ? `Search results for "${search}" in the Prisha Crafts handcrafted bag catalog.`
+    : activeCategoryName
+      ? `Shop ${activeCategoryName.toLowerCase()} from Prisha Crafts' handcrafted bags and accessories collection.`
+      : "Explore handcrafted bags, totes, backpacks, and accessories from Prisha Crafts.";
+  const shopSchemas = [
+    buildBreadcrumbSchema([
+      { name: "Home", path: "/" },
+      { name: "Shop", path: "/shop" },
+      ...(activeCategoryName ? [{ name: activeCategoryName, path: shopPath }] : []),
+    ]),
+    buildCollectionPageSchema({
+      name: activeCategoryName || (search ? `Search results for ${search}` : "Shop Handcrafted Bags"),
+      description: shopDescription,
+      path: shopPath,
+      products,
+    }),
+  ];
+
   return (
     <div className="container mx-auto px-4 lg:px-8 py-16">
+      <SEO
+        title={shopTitle}
+        description={shopDescription}
+        canonicalPath={shopPath}
+        jsonLd={shopSchemas}
+      />
       <div className="mb-14 text-center">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-4xl md:text-6xl font-heading font-black tracking-tighter mb-4 uppercase">The Shop</h1>

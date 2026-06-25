@@ -4,6 +4,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Truck, Star, Package, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import api from "@/services/api";
+import SEO from "@/components/SEO";
+import {
+  SITE_DESCRIPTION,
+  buildBreadcrumbSchema,
+  buildOrganizationSchema,
+  buildProductItemListSchema,
+  buildWebsiteSchema,
+  toAbsoluteUrl,
+} from "@/lib/seo";
 
 interface Category {
   _id: string;
@@ -309,11 +318,35 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [sliders]);
 
+  const homeSchemas = [
+    buildOrganizationSchema(),
+    buildWebsiteSchema(),
+    buildBreadcrumbSchema([{ name: "Home", path: "/" }]),
+    ...(featuredProducts.length > 0
+      ? [
+          buildProductItemListSchema(
+            `${toAbsoluteUrl("/")}#featured-products`,
+            "Featured Handcrafted Bags",
+            featuredProducts
+          ),
+        ]
+      : []),
+  ];
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <Loader2 className="animate-spin text-primary" size={48} />
-      </div>
+      <>
+        <SEO
+          title="Prisha Crafts - Premium Handcrafted Bags & Accessories"
+          description={SITE_DESCRIPTION}
+          canonicalPath="/"
+          image="/images/logo.png"
+          jsonLd={homeSchemas}
+        />
+        <div className="flex items-center justify-center min-h-screen bg-white">
+          <Loader2 className="animate-spin text-primary" size={48} />
+        </div>
+      </>
     );
   }
 
@@ -330,6 +363,13 @@ export default function HomePage() {
   
     return (
       <>
+        <SEO
+          title="Prisha Crafts - Premium Handcrafted Bags & Accessories"
+          description={SITE_DESCRIPTION}
+          canonicalPath="/"
+          image={heroImage || "/images/logo.png"}
+          jsonLd={homeSchemas}
+        />
         {/* Hero Section */}
         <section className="relative h-[90vh] min-h-[600px] flex items-center overflow-hidden bg-black">
           <AnimatePresence mode="wait">
