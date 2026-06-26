@@ -24,9 +24,9 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
         return false;
       }
 
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      const clientId = __GOOGLE_CLIENT_ID__;
       if (!clientId) {
-        console.error("VITE_GOOGLE_CLIENT_ID is not configured in environment variables.");
+        console.error("GOOGLE_CLIENT_ID or VITE_GOOGLE_CLIENT_ID is not configured in environment variables.");
         toast.error("Google Sign-In configuration error.");
         return true; // Stop checking, configuration is missing
       }

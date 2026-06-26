@@ -5,6 +5,8 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const googleClientId = env.VITE_GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID || '';
+
   return {
     server: {
       port: parseInt(env.VITE_PORT || '5173'),
@@ -14,6 +16,9 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         }
       }
+    },
+    define: {
+      __GOOGLE_CLIENT_ID__: JSON.stringify(googleClientId),
     },
     plugins: [react()],
     resolve: {
