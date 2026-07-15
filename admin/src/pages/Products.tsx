@@ -631,7 +631,7 @@ export default function Products() {
                     <label className="px-3 py-1 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-lg cursor-pointer hover:bg-primary/20 transition-all">
                         <Plus size={10} className="inline mr-1" />
                         Quick Upload
-                        <input type="file" className="hidden" accept="image/*" onChange={handleGalleryUpload} />
+                        <input type="file" className="hidden" accept="image/*,image/jpeg,image/jpg,image/png,image/webp" onChange={handleGalleryUpload} />
                     </label>
                   </div>
                   <div className="flex gap-2">
@@ -967,7 +967,7 @@ export default function Products() {
                                       <Upload size={10} /> Upload
                                       <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/*,image/jpeg,image/jpg,image/png,image/webp"
                                         className="hidden"
                                         onChange={async (e) => {
                                           const file = e.target.files?.[0];
@@ -1009,7 +1009,7 @@ export default function Products() {
                                       <Upload size={10} /> Add Image
                                       <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/*,image/jpeg,image/jpg,image/png,image/webp"
                                         className="hidden"
                                         onChange={async (e) => {
                                           const file = e.target.files?.[0];

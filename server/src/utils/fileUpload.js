@@ -28,7 +28,7 @@ const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image/") && ALLOWED_IMAGE_EXTENSIONS.has(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Only JPG, PNG, WebP, AVIF, GIF, TIFF, or HEIC images are allowed."), false);
+    cb(new Error("Only JPG, JPEG, PNG, WebP, AVIF, GIF, TIFF, or HEIC images are allowed."), false);
   }
 };
 

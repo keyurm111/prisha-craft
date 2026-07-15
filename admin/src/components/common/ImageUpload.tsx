@@ -87,7 +87,7 @@ export default function ImageUpload({ value, onChange, label = "Feature Image" }
               type="file" 
               ref={fileInputRef} 
               className="hidden" 
-              accept="image/*"
+              accept="image/*,image/jpeg,image/jpg,image/png,image/webp"
               onChange={handleFileUpload} 
             />
             {isUploading ? (
@@ -110,7 +110,7 @@ export default function ImageUpload({ value, onChange, label = "Feature Image" }
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Click to upload</p>
-                  <p className="text-[9px] font-medium text-muted-foreground mt-1">PNG, JPG or WEBP (Max 20MB)</p>
+                  <p className="text-[9px] font-medium text-muted-foreground mt-1">PNG, JPG, JPEG or WEBP (Max 20MB)</p>
                 </div>
               </>
             )}
