@@ -52,7 +52,7 @@ exports.uploadImage = (req, res) => {
       console.error('Image upload processing error:', err);
       res.status(400).json({
         status: 'fail',
-        message: 'Image could not be processed. Please upload a valid JPG, JPEG, PNG, WebP, AVIF, GIF, TIFF, or HEIC image.',
+        message: `Image could not be processed: ${err.message}. Please upload a valid JPG, JPEG, PNG, WebP, AVIF, GIF, TIFF, or HEIC image.`,
       });
     }
   });

@@ -25,7 +25,13 @@ const ALLOWED_IMAGE_EXTENSIONS = new Set([
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
 
-  if (file.mimetype.startsWith("image/") && ALLOWED_IMAGE_EXTENSIONS.has(ext)) {
+  // Relax mimetype check to allow valid extensions regardless of MIME type
+  // (some devices/browsers send generic mimetypes like application/octet-stream).
+  // sharp will do full byte-level content validation when saving the image.
+  const isImageMime = file.mimetype && file.mimetype.startsWith("image/");
+  const isAllowedExt = ALLOWED_IMAGE_EXTENSIONS.has(ext);
+
+  if (isAllowedExt || (isImageMime && ext === "")) {
     cb(null, true);
   } else {
     cb(new Error("Only JPG, JPEG, PNG, WebP, AVIF, GIF, TIFF, or HEIC images are allowed."), false);
