@@ -144,6 +144,13 @@ docker compose up -d --force-recreate server
 docker compose logs -f server
 ```
 
+After changing the server Docker image or upload permission setup:
+
+```bash
+docker compose up -d --build --force-recreate server
+docker compose logs -f server
+```
+
 For older Docker Compose:
 
 ```bash
@@ -224,6 +231,17 @@ Add the namespace rename:
 
 ```bash
 --nsFrom="meili-db.*" --nsTo="prishadb.*"
+```
+
+### `Permission denied /app/public/uploads/...webp`
+
+The server writes uploaded images to `/app/public/uploads`. In production this is a Docker bind mount from `./server/public/uploads`, so the VPS folder permissions can override the Docker image permissions.
+
+Rebuild and recreate the server so the container entrypoint can repair the mounted upload folder:
+
+```bash
+docker compose up -d --build --force-recreate server
+docker compose logs -f server
 ```
 
 ## Security Notes
