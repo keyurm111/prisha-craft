@@ -24,7 +24,9 @@ FROM base AS production
 ENV NODE_ENV=production
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY . .
-RUN mkdir -p public/uploads && chown -R node:node /app
+RUN mkdir -p public/uploads \
+    && chown -R node:node /app \
+    && chmod -R 775 /app/public/uploads
 USER node
 EXPOSE 5000
 CMD ["npm", "start"]

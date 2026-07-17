@@ -5,7 +5,7 @@ const sharp = require("sharp");
 
 const uploadDir = path.join(__dirname, "../../public/uploads");
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  fs.mkdirSync(uploadDir, { recursive: true, mode: 0o775 });
 }
 
 const MAX_IMAGE_UPLOAD_SIZE = 20 * 1024 * 1024;
