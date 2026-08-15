@@ -71,7 +71,9 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 text-primary/60">Factory & Support</h3>
-                  <p className="text-foreground font-black text-lg tracking-tight">+91 99999 99999</p>
+                  <a href="tel:+919638482348" className="text-foreground font-black text-lg tracking-tight hover:text-primary transition-colors block">
+                    +91 96384 82348
+                  </a>
                 </div>
               </div>
 

@@ -36,8 +36,8 @@ export default function PrivacyPolicy() {
           </p>
           <div className="font-body space-y-1">
             <p className="font-bold">Prisha Crafts Support Team</p>
-            <p className="text-muted-foreground">Email: privacy@meili.example</p>
-            <p className="text-muted-foreground">Phone: +91 99999 99999</p>
+            <p className="text-muted-foreground">Email: <a href="mailto:info@prishacrafts.com" className="hover:text-primary transition-colors">info@prishacrafts.com</a></p>
+            <p className="text-muted-foreground">Phone: <a href="tel:+919638482348" className="hover:text-primary transition-colors">+91 96384 82348</a></p>
           </div>
         </section>
       </motion.div>

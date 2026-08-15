@@ -129,17 +129,17 @@ export default function Footer() {
                  <div className="p-2 bg-background/10 rounded-lg text-white shrink-0">
                     <Phone size={16} />
                  </div>
-                 <p className="text-[13px] font-black tracking-wider text-background/90">
-                    +91 99999 99999
-                 </p>
+                 <a href="tel:+919638482348" className="text-[13px] font-black tracking-wider text-background/90 hover:text-white transition-colors">
+                    +91 96384 82348
+                 </a>
               </div>
               <div className="flex gap-4 items-center">
                  <div className="p-2 bg-background/10 rounded-lg text-white shrink-0">
                     <Mail size={16} />
                  </div>
-                 <p className="text-[13px] font-bold text-background/70 italic lowercase break-all">
+                 <a href="mailto:info@prishacrafts.com" className="text-[13px] font-bold text-background/70 hover:text-white transition-colors italic lowercase break-all">
                     info@prishacrafts.com
-                 </p>
+                 </a>
               </div>
             </div>
           </div>

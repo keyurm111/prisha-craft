@@ -35,7 +35,7 @@ export interface Product {
   }>;
 }
 
-export const WHATSAPP_NUMBER = "919999999999";
+export const WHATSAPP_NUMBER = "919638482348";
 
 export const categories = [
   {

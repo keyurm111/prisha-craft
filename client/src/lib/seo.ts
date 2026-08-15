@@ -13,7 +13,7 @@ export const SITE_NAME = "Prisha Crafts";
 export const SITE_DESCRIPTION =
   "Premium handcrafted bags, totes, backpacks, and accessories from experienced artisan manufacturers.";
 export const SITE_EMAIL = "info@prishacrafts.com";
-export const SITE_PHONE = "+91 99999 99999";
+export const SITE_PHONE = "+91 96384 82348";
 export const DEFAULT_CURRENCY = "INR";
 
 export interface SchemaProductVariant {

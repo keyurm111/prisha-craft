@@ -68,9 +68,14 @@ export default function ReturnPolicy() {
           <p className="text-background/70 font-body text-lg mb-12 max-w-2xl mx-auto h-auto leading-relaxed font-medium">
             Contact our customer support team directly for any issues or questions regarding your return. We're here to make things right.
           </p>
-          <button className="bg-primary text-primary-foreground font-black py-5 px-14 rounded-2xl hover:bg-primary/95 transition-all font-body text-sm tracking-[0.15em] uppercase hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20">
+          <a 
+            href="https://wa.me/919638482348?text=Hi%2C%20I%20need%20assistance%20regarding%20returns%20from%20Prisha%20Crafts"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-primary text-primary-foreground font-black py-5 px-14 rounded-2xl hover:bg-primary/95 transition-all font-body text-sm tracking-[0.15em] uppercase hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
+          >
             Chat on WhatsApp Now
-          </button>
+          </a>
         </section>
       </motion.div>
     </div>
