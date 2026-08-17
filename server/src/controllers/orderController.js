@@ -336,14 +336,6 @@ exports.deleteOrder = async (req, res) => {
       return res.status(404).json({ status: "fail", message: "Order not found" });
     }
 
-    // Block deletion if order is already shipped or delivered
-    if (order.orderStatus === "Shipped" || order.orderStatus === "Delivered") {
-      return res.status(400).json({ 
-        status: "fail", 
-        message: "Cannot delete order once it has been shipped or delivered." 
-      });
-    }
-
     // Sync with Shiprocket cancellation if synced to Shiprocket
     if (order.shiprocketOrderId) {
       try {
@@ -353,8 +345,8 @@ exports.deleteOrder = async (req, res) => {
       }
     }
 
-    // Only restore inventory/coupon if the order wasn't already cancelled
-    if (order.orderStatus !== "Cancelled") {
+    // Only restore inventory/coupon if the order wasn't already cancelled or delivered
+    if (order.orderStatus !== "Cancelled" && order.orderStatus !== "Delivered") {
       // 1) Restore Stock
       for (const item of order.items) {
         if (item.selectedVariant && item.selectedVariant.id) {

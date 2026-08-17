@@ -73,6 +73,7 @@ export default function Orders() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Partial<Order>>({});
 
   useEffect(() => {
@@ -208,13 +209,21 @@ export default function Orders() {
   };
 
   const deleteOrder = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
+    const shortId = id.slice(-8).toUpperCase();
+    if (!window.confirm(`Are you sure you want to permanently delete order #${shortId}? This order will be completely deleted from everywhere (database, admin, and user history).`)) return;
+    
+    setIsDeleting(id);
     try {
       await api.delete(`/orders/${id}`);
-      setOrders(orders.filter(o => o._id !== id));
-      toast.success("Order deleted successfully");
-    } catch (error) {
-      toast.error("Failed to delete order");
+      setOrders((prev) => prev.filter((o) => o._id !== id));
+      if (selectedOrder?._id === id) {
+        setSelectedOrder(null);
+      }
+      toast.success(`Order #${shortId} permanently deleted successfully`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete order");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -395,14 +404,18 @@ export default function Orders() {
                         >
                           Details
                         </button>
-                        {order.orderStatus !== "Shipped" && order.orderStatus !== "Delivered" && (
-                          <button 
-                            onClick={() => deleteOrder(order._id)}
-                            className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                          >
+                        <button 
+                          onClick={() => deleteOrder(order._id)}
+                          disabled={isDeleting === order._id}
+                          title="Delete Order Permanently"
+                          className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-200 disabled:opacity-50"
+                        >
+                          {isDeleting === order._id ? (
+                            <Loader2 size={16} className="animate-spin text-red-600" />
+                          ) : (
                             <Trash2 size={16} />
-                          </button>
-                        )}
+                          )}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -426,9 +439,24 @@ export default function Orders() {
                   <span className="admin-number text-[9px] md:text-[10px] font-black uppercase text-primary">Date: {new Date(selectedOrder.createdAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' })}</span>
                 </div>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-2 md:p-3 hover:bg-white rounded-full transition-all shadow-sm">
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  type="button"
+                  onClick={() => deleteOrder(selectedOrder._id)}
+                  disabled={isDeleting === selectedOrder._id || isSaving}
+                  title="Delete Order Permanently"
+                  className="p-2 md:p-3 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-200 disabled:opacity-50"
+                >
+                  {isDeleting === selectedOrder._id ? (
+                    <Loader2 size={20} className="animate-spin text-red-600" />
+                  ) : (
+                    <Trash2 size={20} />
+                  )}
+                </button>
+                <button onClick={() => setSelectedOrder(null)} className="p-2 md:p-3 hover:bg-white rounded-full transition-all shadow-sm">
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-10 space-y-8 md:space-y-12">
@@ -843,13 +871,29 @@ export default function Orders() {
                     </div>
                  </div>
 
-                 <button
-                   onClick={handleUpdateOrder}
-                   disabled={isSaving}
-                   className="w-full md:w-auto h-14 md:h-16 px-10 md:px-16 bg-primary text-white font-black uppercase tracking-[0.2em] text-[11px] md:text-[13px] rounded-xl md:rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-3 font-heading shadow-xl shadow-primary/20 disabled:opacity-50"
-                 >
-                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : <span>Update Order Details</span>}
-                 </button>
+                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                   <button
+                     type="button"
+                     onClick={() => deleteOrder(selectedOrder._id)}
+                     disabled={isDeleting === selectedOrder._id || isSaving}
+                     className="w-full sm:w-auto h-14 md:h-16 px-6 md:px-8 bg-red-50 text-red-600 border border-red-200 font-black uppercase tracking-[0.15em] text-[11px] md:text-[12px] rounded-xl md:rounded-2xl hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2 font-heading shadow-sm disabled:opacity-50"
+                   >
+                     {isDeleting === selectedOrder._id ? (
+                       <Loader2 className="animate-spin" size={16} />
+                     ) : (
+                       <Trash2 size={16} />
+                     )}
+                     <span>Delete Order</span>
+                   </button>
+
+                   <button
+                     onClick={handleUpdateOrder}
+                     disabled={isSaving || isDeleting === selectedOrder._id}
+                     className="w-full sm:w-auto h-14 md:h-16 px-10 md:px-14 bg-primary text-white font-black uppercase tracking-[0.2em] text-[11px] md:text-[13px] rounded-xl md:rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-3 font-heading shadow-xl shadow-primary/20 disabled:opacity-50"
+                   >
+                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <span>Update Order Details</span>}
+                   </button>
+                 </div>
               </div>
             </div>
           </div>
