@@ -1,8 +1,9 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { Plus, Trash2, Ticket, Search, Loader2, X, Send, Calendar, Percent, IndianRupee, Pencil } from "lucide-react";
+import { Plus, Trash2, Ticket, Search, Filter, Loader2, X, Send, Calendar, Percent, IndianRupee, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Coupon {
   _id: string;
@@ -19,6 +20,8 @@ interface Coupon {
 export default function Coupons() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [discountTypeFilter, setDiscountTypeFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -47,6 +50,22 @@ export default function Coupons() {
       setIsLoading(false);
     }
   };
+
+  const filteredCoupons = coupons.filter((coupon) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || coupon.code.toLowerCase().includes(q);
+    const matchesType = !discountTypeFilter || coupon.discountType === discountTypeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredCoupons, 10);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +156,40 @@ export default function Coupons() {
         </button>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+          <input
+            type="text"
+            placeholder="Search coupons by code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none uppercase"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border/40 h-11 md:h-12">
+            <Filter size={14} className="text-muted-foreground" />
+            <select
+              value={discountTypeFilter}
+              onChange={(e) => setDiscountTypeFilter(e.target.value)}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="">All Discount Types</option>
+              <option value="percentage">Percentage (%)</option>
+              <option value="fixed">Fixed Amount (₹)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-border/40 luxury-shadow overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -150,14 +203,14 @@ export default function Coupons() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {coupons.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground italic font-medium">
-                    No active coupons found.
+                    {searchQuery || discountTypeFilter ? "No coupons match your filter criteria." : "No active coupons found."}
                   </td>
                 </tr>
               ) : (
-                coupons.map((coupon) => (
+                paginatedItems.map((coupon) => (
                   <tr key={coupon._id} className="group hover:bg-secondary/10 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex items-center gap-4">
@@ -206,6 +259,14 @@ export default function Coupons() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="coupons"
+        />
       </div>
 
       {/* Coupon Modal */}

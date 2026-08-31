@@ -57,7 +57,7 @@ export default function Rankings() {
     try {
       const [cRes, pRes] = await Promise.all([
         api.get("/categories"),
-        api.get("/products?limit=200") 
+        api.get("/products?limit=1000") 
       ]);
       const sortedCats = [...cRes.data.data.categories].sort((a, b) => (b.ranking || 0) - (a.ranking || 0));
       setCategories(sortedCats);

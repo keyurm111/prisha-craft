@@ -1,8 +1,9 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { ShoppingBag, Loader2, Package, Clock, CheckCircle, XCircle, Search, Trash2, X, Truck, RefreshCw, FileText, ExternalLink } from "lucide-react";
+import { ShoppingBag, Loader2, Package, Clock, CheckCircle, XCircle, Search, Filter, Trash2, X, Truck, RefreshCw, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Order {
   _id: string;
@@ -71,10 +72,38 @@ interface Order {
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Partial<Order>>({});
+
+  const filteredOrders = orders.filter(order => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || 
+      order._id.toLowerCase().includes(q) ||
+      (order.shippingAddress?.fullName && order.shippingAddress.fullName.toLowerCase().includes(q)) ||
+      (order.shippingAddress?.phone && order.shippingAddress.phone.includes(q)) ||
+      (order.user?.name && order.user.name.toLowerCase().includes(q)) ||
+      (order.user?.email && order.user.email.toLowerCase().includes(q)) ||
+      (order.shiprocketOrderId && order.shiprocketOrderId.toLowerCase().includes(q));
+
+    const matchesStatus = !statusFilter || order.orderStatus === statusFilter;
+    const matchesPayment = !paymentFilter || order.paymentStatus === paymentFilter;
+
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredOrders, 10);
 
   useEffect(() => {
     fetchOrders();
@@ -294,6 +323,58 @@ export default function Orders() {
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+          <input
+            type="text"
+            placeholder="Search by Order ID, customer, phone, email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border/40 h-11 md:h-12">
+            <Filter size={14} className="text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="">All Shipping Statuses</option>
+              <option value="Processing">Processing</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border/40 h-11 md:h-12">
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="">All Payment Statuses</option>
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Refunded">Refunded</option>
+              <option value="Refund Pending">Refund Pending</option>
+              <option value="Refund Initiated">Refund Initiated</option>
+              <option value="Refund Failed">Refund Failed</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-border/40 luxury-shadow overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[1000px]">
@@ -308,15 +389,17 @@ export default function Orders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {orders.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                    <td colSpan={6} className="px-8 py-20 text-center">
                      <ShoppingBag className="mx-auto text-muted-foreground/20 mb-4" size={48} />
-                     <p className="text-muted-foreground italic font-medium">No order details found in the system.</p>
+                     <p className="text-muted-foreground italic font-medium">
+                       {searchQuery || statusFilter || paymentFilter ? "No orders match your filter criteria." : "No order details found in the system."}
+                     </p>
                    </td>
                 </tr>
               ) : (
-                orders.map((order) => (
+                paginatedItems.map((order) => (
                   <tr key={order._id} className="group hover:bg-secondary/10 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex flex-col">
@@ -424,6 +507,14 @@ export default function Orders() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="orders"
+        />
       </div>
 
       {/* View Order Modal */}

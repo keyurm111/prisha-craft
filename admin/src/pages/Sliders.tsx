@@ -4,6 +4,7 @@ import api from "@/services/api";
 import { Plus, Trash2, Loader2, X, Send, Image as ImageIcon, Pencil, Globe, ArrowRight, Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/common/ImageUpload";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Slider {
   _id: string;
@@ -50,6 +51,15 @@ export default function Sliders() {
       setIsLoading(false);
     }
   };
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(sliders, 6);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,71 +157,87 @@ export default function Sliders() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-        {sliders.length === 0 ? (
-          <div className="md:col-span-2 p-10 md:p-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-border flex flex-col items-center">
-             <ImageIcon size={48} className="text-muted-foreground/20 mb-4" />
-             <p className="text-muted-foreground italic font-medium">No sliders found in the database.</p>
-          </div>
-        ) : (
-          sliders.map((slider) => (
-            <div key={slider._id} className="group bg-white rounded-2xl md:rounded-[3rem] overflow-hidden luxury-shadow border border-border/20 flex flex-col h-full transition-transform duration-300 hover:scale-[1.01]">
-               <div className="relative h-48 md:h-64 overflow-hidden">
-                  <img 
-                    src={slider.image} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://placehold.co/800x400?text=${encodeURIComponent(slider.title)}`;
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/40" />
-                  <div className="absolute top-4 left-6 flex items-center gap-2">
-                     <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[8px] font-black text-white uppercase tracking-widest">{slider.isActive ? 'Active' : 'Hidden'}</span>
-                  </div>
-                  <div className="absolute bottom-4 left-6 right-6 md:bottom-6 md:left-8 md:right-8">
-                     <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/60 mb-1">Slide {slider.order + 1}</p>
-                     <h3 className="text-xl md:text-2xl font-heading font-black text-white uppercase tracking-tight line-clamp-1">{slider.title}</h3>
-                  </div>
-                  <div className="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2">
-                     <button 
-                        onClick={() => handleEdit(slider)}
-                        className="w-8 h-8 md:w-10 md:h-10 bg-white/10 backdrop-blur-md rounded-lg md:rounded-xl flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"
-                     >
-                        <Pencil size={18} />
-                     </button>
-                     <button 
-                         onClick={() => deleteSlider(slider._id)}
-                         className="w-8 h-8 md:w-10 md:h-10 bg-destructive/10 backdrop-blur-md rounded-lg md:rounded-xl flex items-center justify-center text-destructive-foreground hover:bg-destructive hover:text-white transition-all"
-                     >
-                        <Trash2 size={18} />
-                     </button>
-                  </div>
-               </div>
-               
-               <div className="p-6 md:p-8 flex-1 flex flex-col">
-                  <p className="text-xs md:text-sm text-muted-foreground font-medium italic mb-6 line-clamp-2">"{slider.subtitle}"</p>
-                  
-                  <div className="mt-auto pt-4 md:pt-6 border-t border-border/10 flex items-center justify-between">
-                     <div className="flex items-center gap-2 md:gap-3">
-                        <div className="h-8 md:h-10 px-3 md:px-4 bg-secondary/50 rounded-full flex items-center border border-border/20 max-w-[120px] md:max-w-none">
-                           <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest truncate">{slider.ctaText}</span>
-                        </div>
-                        {slider.mobileImage && (
-                            <div className="h-8 w-8 md:h-10 md:w-10 bg-primary/5 text-primary rounded-full flex items-center justify-center border border-primary/10 shrink-0" title="Has Mobile Image">
-                                <Smartphone size={14} />
-                            </div>
-                        )}
-                     </div>
-                     <button 
-                        onClick={() => toggleStatus(slider)}
-                        className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border transition-all ${slider.isActive ? 'border-green-500/20 text-green-600 bg-green-50' : 'border-red-500/20 text-red-600 bg-red-50'}`}
-                     >
-                        {slider.isActive ? 'Live' : 'Hidden'}
-                     </button>
-                  </div>
-               </div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          {paginatedItems.length === 0 ? (
+            <div className="md:col-span-2 p-10 md:p-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-border flex flex-col items-center">
+               <ImageIcon size={48} className="text-muted-foreground/20 mb-4" />
+               <p className="text-muted-foreground italic font-medium">No sliders found in the database.</p>
             </div>
-          ))
+          ) : (
+            paginatedItems.map((slider) => (
+              <div key={slider._id} className="group bg-white rounded-2xl md:rounded-[3rem] overflow-hidden luxury-shadow border border-border/20 flex flex-col h-full transition-transform duration-300 hover:scale-[1.01]">
+                 <div className="relative h-48 md:h-64 overflow-hidden">
+                    <img 
+                      src={slider.image} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://placehold.co/800x400?text=${encodeURIComponent(slider.title)}`;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/40" />
+                    <div className="absolute top-4 left-6 flex items-center gap-2">
+                       <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[8px] font-black text-white uppercase tracking-widest">{slider.isActive ? 'Active' : 'Hidden'}</span>
+                    </div>
+                    <div className="absolute bottom-4 left-6 right-6 md:bottom-6 md:left-8 md:right-8">
+                       <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/60 mb-1">Slide {slider.order + 1}</p>
+                       <h3 className="text-xl md:text-2xl font-heading font-black text-white uppercase tracking-tight line-clamp-1">{slider.title}</h3>
+                    </div>
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2">
+                       <button 
+                          onClick={() => handleEdit(slider)}
+                          className="w-8 h-8 md:w-10 md:h-10 bg-white/10 backdrop-blur-md rounded-lg md:rounded-xl flex items-center justify-center text-white hover:bg-white hover:text-black transition-all"
+                       >
+                          <Pencil size={18} />
+                       </button>
+                       <button 
+                           onClick={() => deleteSlider(slider._id)}
+                           className="w-8 h-8 md:w-10 md:h-10 bg-destructive/10 backdrop-blur-md rounded-lg md:rounded-xl flex items-center justify-center text-destructive-foreground hover:bg-destructive hover:text-white transition-all"
+                       >
+                          <Trash2 size={18} />
+                       </button>
+                    </div>
+                 </div>
+                 
+                 <div className="p-6 md:p-8 flex-1 flex flex-col">
+                    <p className="text-xs md:text-sm text-muted-foreground font-medium italic mb-6 line-clamp-2">"{slider.subtitle}"</p>
+                    
+                    <div className="mt-auto pt-4 md:pt-6 border-t border-border/10 flex items-center justify-between">
+                       <div className="flex items-center gap-2 md:gap-3">
+                          <div className="h-8 md:h-10 px-3 md:px-4 bg-secondary/50 rounded-full flex items-center border border-border/20 max-w-[120px] md:max-w-none">
+                             <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest truncate">{slider.ctaText}</span>
+                          </div>
+                          {slider.mobileImage && (
+                              <div className="h-8 w-8 md:h-10 md:w-10 bg-primary/5 text-primary rounded-full flex items-center justify-center border border-primary/10 shrink-0" title="Has Mobile Image">
+                                  <Smartphone size={14} />
+                              </div>
+                          )}
+                       </div>
+                       <button 
+                          onClick={() => toggleStatus(slider)}
+                          className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border transition-all ${slider.isActive ? 'border-green-500/20 text-green-600 bg-green-50' : 'border-red-500/20 text-red-600 bg-red-50'}`}
+                       >
+                          {slider.isActive ? 'Live' : 'Hidden'}
+                       </button>
+                    </div>
+                 </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {totalItems > pageSize && (
+          <div className="bg-white rounded-2xl border border-border/40 luxury-shadow overflow-hidden">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[4, 6, 12]}
+              itemLabel="slides"
+            />
+          </div>
         )}
       </div>
 

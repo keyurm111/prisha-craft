@@ -1,7 +1,8 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { User as UserIcon, Mail, Calendar, ShieldCheck, Phone, MapPin, X, ExternalLink, Info, Loader2 } from "lucide-react";
+import { User as UserIcon, Mail, Calendar, ShieldCheck, Phone, MapPin, X, ExternalLink, Info, Loader2, Search } from "lucide-react";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface User {
   _id: string;
@@ -17,6 +18,7 @@ interface User {
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -36,6 +38,25 @@ export default function Users() {
     }
   };
 
+  const filteredUsers = users.filter((u) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.phone && u.phone.includes(q))
+    );
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredUsers, 10);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -53,6 +74,23 @@ export default function Users() {
         </div>
       </div>
 
+      {/* Search Toolbar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+        <input
+          type="text"
+          placeholder="Search users by name, email, phone..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-border/40 luxury-shadow overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[700px]">
@@ -64,14 +102,16 @@ export default function Users() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {users.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-8 py-20 text-center">
-                    <p className="text-muted-foreground italic font-medium">No users found in the system yet.</p>
+                    <p className="text-muted-foreground italic font-medium">
+                      {searchQuery ? "No users match your search query." : "No users found in the system yet."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
+                paginatedItems.map((user) => (
                   <tr key={user._id} className="group hover:bg-secondary/20 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex items-center gap-4">
@@ -115,6 +155,14 @@ export default function Users() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="users"
+        />
       </div>
 
       {/* User Detail Modal */}

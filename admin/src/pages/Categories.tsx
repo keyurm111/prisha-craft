@@ -1,9 +1,10 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { Plus, Trash2, Tag, Loader2, X, Send, Image as ImageIcon, Pencil } from "lucide-react";
+import { Plus, Trash2, Tag, Loader2, X, Send, Image as ImageIcon, Pencil, Search } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/common/ImageUpload";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Category {
   _id: string;
@@ -18,6 +19,7 @@ interface Category {
 export default function Categories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,6 +44,25 @@ export default function Categories() {
       setIsLoading(false);
     }
   };
+
+  const filteredCategories = categories.filter((category) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      category.name.toLowerCase().includes(q) ||
+      category.slug.toLowerCase().includes(q) ||
+      (category.description && category.description.toLowerCase().includes(q))
+    );
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredCategories, 10);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +143,23 @@ export default function Categories() {
         </button>
       </div>
 
+      {/* Search Toolbar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+        <input
+          type="text"
+          placeholder="Search categories by name, slug..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-border/40 shadow-sm overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[700px]">
@@ -134,14 +172,16 @@ export default function Categories() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {categories.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-8 py-20 text-center">
-                    <p className="text-muted-foreground italic font-medium">No categories found in the database.</p>
+                    <p className="text-muted-foreground italic font-medium">
+                      {searchQuery ? "No categories match your search query." : "No categories found in the database."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                categories.map((category) => (
+                paginatedItems.map((category) => (
                   <tr key={category._id} className="group hover:bg-secondary/10 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex items-center gap-4">
@@ -187,6 +227,14 @@ export default function Categories() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="categories"
+        />
       </div>
 
       {/* Append/Edit Collective Modal */}
