@@ -1,8 +1,9 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { Mail, Calendar, MessageSquare, Trash2, CheckCircle2, Clock, X, Info, User, Loader2 } from "lucide-react";
+import { Mail, Calendar, MessageSquare, Trash2, CheckCircle2, Clock, X, Info, User, Loader2, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Inquiry {
   _id: string;
@@ -17,6 +18,8 @@ interface Inquiry {
 export default function Inquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
   useEffect(() => {
@@ -44,6 +47,28 @@ export default function Inquiries() {
     }
   };
 
+  const filteredInquiries = inquiries.filter((inquiry) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      inquiry.name.toLowerCase().includes(q) ||
+      inquiry.email.toLowerCase().includes(q) ||
+      inquiry.subject.toLowerCase().includes(q) ||
+      inquiry.message.toLowerCase().includes(q);
+
+    const matchesStatus = !statusFilter || inquiry.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredInquiries, 10);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -61,6 +86,41 @@ export default function Inquiries() {
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+          <input
+            type="text"
+            placeholder="Search messages by name, email, subject..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border/40 h-11 md:h-12">
+            <Filter size={14} className="text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="read">Read</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-border/40 luxury-shadow overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -74,14 +134,16 @@ export default function Inquiries() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {inquiries.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center">
-                    <p className="text-muted-foreground italic font-medium">No messages found in the database.</p>
+                    <p className="text-muted-foreground italic font-medium">
+                      {searchQuery || statusFilter ? "No messages match your filter criteria." : "No messages found in the database."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                inquiries.map((inquiry) => (
+                paginatedItems.map((inquiry) => (
                   <tr key={inquiry._id} className="group hover:bg-secondary/10 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6 whitespace-nowrap">
                       <div className="flex flex-col min-w-0">
@@ -127,6 +189,14 @@ export default function Inquiries() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="messages"
+        />
       </div>
 
       {/* Inquiry Detail Modal */}

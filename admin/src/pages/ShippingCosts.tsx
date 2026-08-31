@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import api from "@/services/api";
 import { Plus, Trash2, Loader2, X, Send, Pencil, Scale, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface ShippingRange {
   _id: string;
@@ -39,6 +40,15 @@ export default function ShippingCosts() {
       setIsLoading(false);
     }
   };
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(ranges, 10);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,14 +151,14 @@ export default function ShippingCosts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {ranges.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center text-muted-foreground italic font-medium">
                     No custom shipping ranges configured. Flat free shipping (₹0) will apply.
                   </td>
                 </tr>
               ) : (
-                ranges.map((range) => (
+                paginatedItems.map((range) => (
                   <tr key={range._id} className="group hover:bg-secondary/10 transition-colors">
                     <td className="px-6 md:px-8 py-5 md:py-6">
                       <div className="flex items-center gap-4">
@@ -202,6 +212,14 @@ export default function ShippingCosts() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="ranges"
+        />
       </div>
 
       {/* Range Modal */}

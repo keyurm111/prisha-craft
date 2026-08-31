@@ -1,9 +1,10 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { Plus, Trash2, Loader2, X, Send, User, Pencil, Star, MessageSquare } from "lucide-react";
+import { Plus, Trash2, Loader2, X, Send, User, Pencil, Star, MessageSquare, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/common/ImageUpload";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Testimonial {
   _id: string;
@@ -20,6 +21,8 @@ interface Testimonial {
 export default function Testimonials() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [ratingFilter, setRatingFilter] = useState<number | "">("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -49,6 +52,22 @@ export default function Testimonials() {
       setIsLoading(false);
     }
   };
+
+  const filteredTestimonials = testimonials.filter((t) => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || t.name.toLowerCase().includes(q) || t.role.toLowerCase().includes(q) || t.content.toLowerCase().includes(q);
+    const matchesRating = ratingFilter === "" || t.rating === ratingFilter;
+    return matchesSearch && matchesRating;
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredTestimonials, 6);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,66 +163,119 @@ export default function Testimonials() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {testimonials.length === 0 ? (
-          <div className="md:col-span-2 lg:col-span-3 p-10 md:p-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-border flex flex-col items-center">
-             <MessageSquare size={48} className="text-muted-foreground/20 mb-4" />
-             <p className="text-muted-foreground italic font-medium">No testimonials found. Fallback data will be displayed on the homepage.</p>
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+          <input
+            type="text"
+            placeholder="Search reviews by name, content..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border/40 h-11 md:h-12">
+            <Filter size={14} className="text-muted-foreground" />
+            <select
+              value={ratingFilter}
+              onChange={(e) => setRatingFilter(e.target.value === "" ? "" : Number(e.target.value))}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="">All Star Ratings</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
           </div>
-        ) : (
-          testimonials.map((t) => (
-            <div key={t._id} className="group bg-white rounded-2xl md:rounded-[2.5rem] overflow-hidden luxury-shadow border border-border/20 flex flex-col h-full transition-transform duration-300 hover:scale-[1.01] p-6 md:p-8">
-               <div className="flex justify-between items-start gap-4">
-                  <div className="flex items-center gap-4">
-                     {t.avatar ? (
-                        <img src={t.avatar} alt={t.name} className="w-12 h-12 rounded-full object-cover border border-border shrink-0" />
-                     ) : (
-                        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center font-black text-xs text-primary shrink-0">
-                           {t.name.charAt(0)}
-                        </div>
-                     )}
-                     <div>
-                        <h3 className="text-sm font-black uppercase tracking-wider line-clamp-1">{t.name}</h3>
-                        <p className="text-[10px] text-muted-foreground font-semibold italic">{t.role}</p>
-                     </div>
-                  </div>
-                  
-                  <div className="flex gap-1">
-                     <button
-                        onClick={() => handleEdit(t)}
-                        className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center text-foreground hover:bg-black hover:text-white transition-all"
-                     >
-                        <Pencil size={14} />
-                     </button>
-                     <button
-                         onClick={() => deleteTestimonial(t._id)}
-                         className="w-8 h-8 bg-destructive/10 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive hover:text-white transition-all"
-                     >
-                        <Trash2 size={14} />
-                     </button>
-                  </div>
-               </div>
+        </div>
+      </div>
 
-               <div className="mt-4 flex gap-0.5 text-amber-500">
-                  {[...Array(t.rating)].map((_, s) => <Star key={s} size={14} fill="currentColor" />)}
-               </div>
-
-               <p className="mt-4 text-xs md:text-sm text-muted-foreground font-medium italic flex-1 leading-relaxed">
-                  "{t.content}"
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {paginatedItems.length === 0 ? (
+            <div className="md:col-span-2 lg:col-span-3 p-10 md:p-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-border flex flex-col items-center">
+               <MessageSquare size={48} className="text-muted-foreground/20 mb-4" />
+               <p className="text-muted-foreground italic font-medium">
+                 {searchQuery || ratingFilter !== "" ? "No reviews match your filter criteria." : "No testimonials found. Fallback data will be displayed on the homepage."}
                </p>
-
-               <div className="mt-6 pt-4 border-t border-border/10 flex justify-between items-center">
-                  <span className="admin-number text-[9px] font-black uppercase text-muted-foreground/60">Priority: {t.order}</span>
-                  <button 
-                     onClick={() => toggleFeatured(t)}
-                     className={`text-[8px] md:text-[9px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full border transition-all ${t.featured ? 'border-primary/20 text-primary bg-primary/5' : 'border-border text-muted-foreground bg-transparent'}`}
-                  >
-                     {t.featured ? 'Featured' : 'Draft'}
-                  </button>
-               </div>
             </div>
-          ))
-        )}
+          ) : (
+            paginatedItems.map((t) => (
+              <div key={t._id} className="group bg-white rounded-2xl md:rounded-[2.5rem] overflow-hidden luxury-shadow border border-border/20 flex flex-col h-full transition-transform duration-300 hover:scale-[1.01] p-6 md:p-8">
+                 <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-center gap-4">
+                       {t.avatar ? (
+                          <img src={t.avatar} alt={t.name} className="w-12 h-12 rounded-full object-cover border border-border shrink-0" />
+                       ) : (
+                          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center font-black text-xs text-primary shrink-0">
+                             {t.name.charAt(0)}
+                          </div>
+                       )}
+                       <div>
+                          <h3 className="text-sm font-black uppercase tracking-wider line-clamp-1">{t.name}</h3>
+                          <p className="text-[10px] text-muted-foreground font-semibold italic">{t.role}</p>
+                       </div>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                       <button
+                          onClick={() => handleEdit(t)}
+                          className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center text-foreground hover:bg-black hover:text-white transition-all"
+                       >
+                          <Pencil size={14} />
+                       </button>
+                       <button
+                           onClick={() => deleteTestimonial(t._id)}
+                           className="w-8 h-8 bg-destructive/10 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive hover:text-white transition-all"
+                       >
+                          <Trash2 size={14} />
+                       </button>
+                    </div>
+                 </div>
+
+                 <div className="mt-4 flex gap-0.5 text-amber-500">
+                    {[...Array(t.rating)].map((_, s) => <Star key={s} size={14} fill="currentColor" />)}
+                 </div>
+
+                 <p className="mt-4 text-xs md:text-sm text-muted-foreground font-medium italic flex-1 leading-relaxed">
+                    "{t.content}"
+                 </p>
+
+                 <div className="mt-6 pt-4 border-t border-border/10 flex justify-between items-center">
+                    <span className="admin-number text-[9px] font-black uppercase text-muted-foreground/60">Priority: {t.order}</span>
+                    <button 
+                       onClick={() => toggleFeatured(t)}
+                       className={`text-[8px] md:text-[9px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full border transition-all ${t.featured ? 'border-primary/20 text-primary bg-primary/5' : 'border-border text-muted-foreground bg-transparent'}`}
+                    >
+                       {t.featured ? 'Featured' : 'Draft'}
+                    </button>
+                 </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-border/40 luxury-shadow overflow-hidden">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[6, 9, 15, 30]}
+            itemLabel="reviews"
+          />
+        </div>
       </div>
 
       {isModalOpen && createPortal(

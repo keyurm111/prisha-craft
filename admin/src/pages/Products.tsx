@@ -1,9 +1,10 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
-import { Plus, Trash2, Package, Loader2, X, Send, Image as ImageIcon, Pencil, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Package, Loader2, X, Send, Image as ImageIcon, Pencil, Upload, ChevronDown, ChevronUp, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "@/components/common/ImageUpload";
+import { Pagination, usePagination } from "@/components/common/Pagination";
 
 interface Product {
   _id: string;
@@ -52,6 +53,8 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,7 +105,7 @@ export default function Products() {
   const fetchData = async () => {
     try {
       const [pRes, cRes] = await Promise.all([
-        api.get("/products"),
+        api.get("/products?limit=1000"),
         api.get("/categories")
       ]);
       setProducts(pRes.data.data.products);
@@ -113,6 +116,32 @@ export default function Products() {
       setIsLoading(false);
     }
   };
+
+  const filteredProducts = products.filter(p => {
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q));
+    const catId = typeof p.category === 'object' ? p.category?._id : p.category;
+    const matchesCategory = !categoryFilter || catId === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems
+  } = usePagination(filteredProducts, 10);
+
+  const filteredStockProducts = products.filter(p => {
+    const q = stockSearchQuery.toLowerCase().trim();
+    const matchesProduct = p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q));
+    const matchesVariant = p.variants?.some(v => v.sku?.toLowerCase().includes(q) || Object.values(v.options).some(val => val.toLowerCase().includes(q)));
+    return matchesProduct || matchesVariant;
+  });
+
+  const stockPagination = usePagination(filteredStockProducts, 10);
 
   const generateCombinations = (optionsList: Array<{ name: string; values: string[] }>) => {
     if (optionsList.length === 0) return [];
@@ -458,6 +487,43 @@ export default function Products() {
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
+          <input
+            type="text"
+            placeholder="Search products by name or SKU..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 md:h-12 pl-11 pr-10 bg-white border border-border/40 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border/40 h-11 md:h-12">
+            <Filter size={14} className="text-muted-foreground" />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-border/40 shadow-sm overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -470,14 +536,16 @@ export default function Products() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {products.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                    <td colSpan={4} className="px-8 py-20 text-center">
-                    <p className="text-muted-foreground italic font-medium text-sm">No products found.</p>
+                    <p className="text-muted-foreground italic font-medium text-sm">
+                      {searchQuery || categoryFilter ? "No products match your filter criteria." : "No products found."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                products.map((product) => {
+                paginatedItems.map((product) => {
                   const firstVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
                   const displayPrice = firstVariant && firstVariant.price !== undefined ? firstVariant.price : product.price;
                   const displayImage = firstVariant && firstVariant.image ? firstVariant.image : product.mainImage;
@@ -516,6 +584,14 @@ export default function Products() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="products"
+        />
       </div>
 
       {isModalOpen && createPortal(
@@ -1128,14 +1204,12 @@ export default function Products() {
 
               {/* Scrollable list of products */}
               <div className="flex-1 overflow-y-auto pr-2 no-scrollbar space-y-4">
-                {products
-                  .filter(p => {
-                    const q = stockSearchQuery.toLowerCase();
-                    const matchesProduct = p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q));
-                    const matchesVariant = p.variants?.some(v => v.sku?.toLowerCase().includes(q) || Object.values(v.options).some(val => val.toLowerCase().includes(q)));
-                    return matchesProduct || matchesVariant;
-                  })
-                  .map(product => {
+                {stockPagination.paginatedItems.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground italic text-sm font-medium">
+                    {stockSearchQuery ? "No products match your inventory search." : "No products found."}
+                  </div>
+                ) : (
+                  stockPagination.paginatedItems.map(product => {
                     const hasVariants = product.variants && product.variants.length > 0;
                     const isExpanded = !!expandedProductIds[product._id];
 
@@ -1246,7 +1320,21 @@ export default function Products() {
                         )}
                       </div>
                     );
-                  })}
+                  })
+                )}
+              </div>
+
+              {/* Stock Modal Pagination */}
+              <div className="mt-4 pt-2 border-t border-border/20 shrink-0">
+                <Pagination
+                  currentPage={stockPagination.currentPage}
+                  totalItems={stockPagination.totalItems}
+                  pageSize={stockPagination.pageSize}
+                  onPageChange={stockPagination.setCurrentPage}
+                  onPageSizeChange={stockPagination.setPageSize}
+                  pageSizeOptions={[5, 10, 25, 50]}
+                  itemLabel="products"
+                />
               </div>
             </div>
           </div>
